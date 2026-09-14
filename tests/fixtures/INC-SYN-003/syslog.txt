@@ -1,0 +1,5 @@
+1 EW9  20260911034015 workprocess 07 : extended memory usage 1,984 MB, warning threshold 2,000 MB
+1 EW9  20260911034102 workprocess 07 : extended memory usage 1,997 MB, warning threshold 2,000 MB
+1 EQ0  20260911034118 workprocess 07 : PXA/roll-in request could not be satisfied, no free page frame
+1 EW9  20260911034120 workprocess 07 : heap memory usage 1,000,004 KB, exceeds abap/heap_area_dia
+1 EQ0  20260911034122 workprocess 07 : runtime error TSV_TNEW_PAGE_ALLOC_FAILED in program ZMM_MATERIAL_UPLOAD

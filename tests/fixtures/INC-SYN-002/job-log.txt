@@ -1,0 +1,9 @@
+Job started
+Step 001 started (program ZMM_MATERIAL_REPROCESS, variant SYN_NIGHTLY)
+Processing block starting at MATNR 000000000000100000
+Processing block starting at MATNR 000000000000100000
+Processing block starting at MATNR 000000000000100000
+Processing block starting at MATNR 000000000000100000
+Processing block starting at MATNR 000000000000100000
+Processing block starting at MATNR 000000000000100000
+Job cancelled by user BASIS_SYN (running time exceeded 6 hours; normal runtime is 25 minutes)

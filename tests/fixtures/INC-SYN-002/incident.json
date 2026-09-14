@@ -1,0 +1,20 @@
+{
+  "incident_id": "INC-SYN-002",
+  "summary": "Synthetic incident: a nightly background job (material master reprocessing) never finished and had to be cancelled manually after running far past its normal duration, with no error logged.",
+  "system": {
+    "sid": "SYN",
+    "product": "SAP S/4HANA (synthetic)",
+    "release": null,
+    "kernel": null,
+    "database": null
+  },
+  "time_window": {
+    "start": null,
+    "end": null,
+    "timezone": null
+  },
+  "files": [
+    {"path": "job-log.txt", "encoding": "utf-8", "timezone": null},
+    {"path": "workprocess-trace.txt", "encoding": "utf-8", "timezone": null}
+  ]
+}

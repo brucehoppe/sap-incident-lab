@@ -1,0 +1,20 @@
+{
+  "incident_id": "INC-SYN-004",
+  "summary": "Synthetic incident: all outbound RFC calls to a partner system began failing at the same moment, after working normally for over a year.",
+  "system": {
+    "sid": "SYN",
+    "product": "SAP S/4HANA (synthetic)",
+    "release": null,
+    "kernel": null,
+    "database": null
+  },
+  "time_window": {
+    "start": null,
+    "end": null,
+    "timezone": null
+  },
+  "files": [
+    {"path": "rfc-trace.txt", "encoding": "utf-8", "timezone": null},
+    {"path": "gateway-log.txt", "encoding": "utf-8", "timezone": null}
+  ]
+}

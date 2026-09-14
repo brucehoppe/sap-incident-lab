@@ -30,3 +30,15 @@ def test_invalid_incident_id_raises(tmp_path: Path) -> None:
     (tmp_path / "incident.json").write_text(json.dumps({"incident_id": "bad id!"}))
     with pytest.raises(ManifestError, match="failed validation"):
         load_manifest(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "incident_id", ["INC-SYN-001", "INC-SYN-002", "INC-SYN-003", "INC-SYN-004"]
+)
+def test_every_portfolio_fixture_has_a_valid_manifest(
+    fixtures_dir: Path, incident_id: str
+) -> None:
+    manifest = load_manifest(fixtures_dir / incident_id)
+    assert manifest.incident_id == incident_id
+    assert manifest.summary
+    assert len(manifest.files) == 2

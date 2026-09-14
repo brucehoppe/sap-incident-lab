@@ -19,11 +19,20 @@ See [`DESIGN.md`](DESIGN.md) section 12 for the milestone table.
   — bounded, chunked Qwen extraction as an async job, with restart recovery
 - `incident_lab_save_report` — versioned, Claude-authored Markdown reports
 
-91 tests pass (`uv run pytest`); ruff and `mypy --strict` are clean.
+99 tests pass (`uv run pytest`); ruff and `mypy --strict` are clean.
 
-Milestones 5–7 (a real incident, evaluation, publication) need a resolved
-incident, the Windows work laptop and institutional Claude Desktop, and your
-sign-off on data classification — see DESIGN.md sections 3 and 13.
+With no resolved incident available, milestones 5–6 became a 4-case synthetic
+portfolio instead (`tests/fixtures/INC-SYN-00{1,2,3,4}`) covering distinct
+failure shapes — a stale enqueue lock, an infinite-loop batch job, a
+memory-exhaustion short dump, an expired RFC certificate. All four ran live
+against `qwen3:8b`. See DESIGN.md section 13 for what that run showed,
+including a real limitation it found: `hypotheses` came back empty in every
+one of 8 chunks, even where the observations already contained the answer.
+
+Milestone 7 (publication) still needs your sign-off on releasing this repo
+publicly. Milestone 5 in its original sense — a real resolved incident —
+is now just "whenever the next real incident happens" rather than a
+scheduled step; see DESIGN.md sections 3 and 14.
 
 ## Setup
 

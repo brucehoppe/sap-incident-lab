@@ -1,0 +1,20 @@
+{
+  "incident_id": "INC-SYN-003",
+  "summary": "Synthetic incident: a nightly material upload job terminated with a short dump partway through, after previously running successfully on smaller files for months.",
+  "system": {
+    "sid": "SYN",
+    "product": "SAP S/4HANA (synthetic)",
+    "release": null,
+    "kernel": null,
+    "database": null
+  },
+  "time_window": {
+    "start": null,
+    "end": null,
+    "timezone": null
+  },
+  "files": [
+    {"path": "st22-dump.txt", "encoding": "utf-8", "timezone": null},
+    {"path": "syslog.txt", "encoding": "utf-8", "timezone": null}
+  ]
+}

@@ -159,3 +159,27 @@ def test_read_evidence_window_clips_and_reports_next_start(
     assert result["clipped"] is True
     assert result["next_start_line"] == 2
     assert len(result["lines"]) == 1
+
+
+def test_list_incidents_finds_the_full_portfolio(
+    synthetic_incident_portfolio: Settings,
+) -> None:
+    assert list_incidents(synthetic_incident_portfolio) == [
+        "INC-SYN-001",
+        "INC-SYN-002",
+        "INC-SYN-003",
+        "INC-SYN-004",
+    ]
+
+
+@pytest.mark.parametrize(
+    "incident_id", ["INC-SYN-001", "INC-SYN-002", "INC-SYN-003", "INC-SYN-004"]
+)
+def test_each_portfolio_incident_loads_two_hashed_files(
+    synthetic_incident_portfolio: Settings, incident_id: str
+) -> None:
+    manifest, records = load_files(synthetic_incident_portfolio, incident_id)
+    assert manifest.incident_id == incident_id
+    assert len(records) == 2
+    assert all(len(r.sha256) == 64 for r in records)
+    assert all(r.line_count > 0 for r in records)

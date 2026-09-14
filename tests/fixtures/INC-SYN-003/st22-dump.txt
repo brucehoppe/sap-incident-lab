@@ -1,0 +1,14 @@
+Runtime Error          TSV_TNEW_PAGE_ALLOC_FAILED
+Date and Time          2026-09-11 03:41:22
+Short text
+    No more storage space available for extending an internal table.
+What happened?
+    The internal table "IT_MATERIAL_BUFFER" in program "ZMM_MATERIAL_UPLOAD"
+    could not be enlarged, because no more memory could be allocated.
+Program                ZMM_MATERIAL_UPLOAD
+Include                ZMM_MATERIAL_UPLOAD
+Line                    118
+Source Code             APPEND ls_material TO it_material_buffer.
+Information on where terminated
+    The termination occurred in ABAP program "ZMM_MATERIAL_UPLOAD" in
+    "READ_UPLOAD_FILE", row 118, at line-loop iteration 4,812,003.

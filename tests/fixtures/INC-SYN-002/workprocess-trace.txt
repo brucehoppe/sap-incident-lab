@@ -1,0 +1,13 @@
+Trc file: "dev_w7", trc level: 1, release: "synthetic"
+Tue Sep 08 02:15:03 2026
+    dialog step, program ZMM_MATERIAL_REPROCESS, screen 0
+Tue Sep 08 02:15:03 2026
+    database: SELECT MATNR WHERE MATNR >= :start_matnr UP TO 100 ROWS
+Tue Sep 08 02:15:03 2026
+    fetched 100 rows, CPU time 0.4 sec
+Tue Sep 08 02:15:04 2026
+    database: SELECT MATNR WHERE MATNR >= :start_matnr UP TO 100 ROWS
+Tue Sep 08 02:15:04 2026
+    fetched 100 rows, CPU time 0.4 sec
+Tue Sep 08 02:15:04 2026
+    note: :start_matnr unchanged since previous SELECT (000000000000100000)

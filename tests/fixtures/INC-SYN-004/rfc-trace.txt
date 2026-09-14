@@ -1,0 +1,7 @@
+2026-09-12 00:00:03 RFC destination SYN_PARTNER_01: connection attempt started
+2026-09-12 00:00:03 RFC destination SYN_PARTNER_01: TLS handshake failed
+2026-09-12 00:00:03 RFC destination SYN_PARTNER_01: reason: peer certificate has expired (notAfter=2026-09-12T00:00:00Z)
+2026-09-12 00:00:04 RFC destination SYN_PARTNER_01: connection attempt started
+2026-09-12 00:00:04 RFC destination SYN_PARTNER_01: TLS handshake failed
+2026-09-12 00:00:04 RFC destination SYN_PARTNER_01: reason: peer certificate has expired (notAfter=2026-09-12T00:00:00Z)
+2026-09-12 00:00:04 RFC destination SYN_PARTNER_01: call aborted, error RFC_ERROR_COMMUNICATION

@@ -341,13 +341,50 @@ live run through the actual model. Milestones 5–7 need real input from you —
 
 ---
 
-## 13. Open questions for you
+## 13. Findings from the synthetic portfolio
+
+With no resolved incident available, milestones 5–6 became a 4-case synthetic portfolio
+instead: a stale enqueue lock (INC-SYN-001), an infinite-loop batch job (INC-SYN-002), a
+memory-exhaustion short dump (INC-SYN-003), and an expired RFC certificate (INC-SYN-004) —
+four different failure shapes, each with its own evidence files and a private answer key.
+All four ran live through the real tool chain with `qwen3:8b`. This is not the guide §12
+accuracy evaluation (that needs real cases with a real, independently-known cause); it is
+the "show where it clearly helps and where it doesn't" alternative the design pivoted to.
+
+**Where it clearly helped.** In every case, `observations` correctly identified the specific
+technical signal a human would need — the unchanged `:start_matnr` between SELECTs
+(INC-SYN-002), the exact internal table name and line number from the short dump plus the
+climbing memory warnings that preceded it (INC-SYN-003), the exact expired certificate name
+and its expiry instant (INC-SYN-004). Every observation's line-range reference validated
+against the chunk it was drawn from — the reference-clipping code in `validate.py` never had
+to drop anything in this run, meaning the model stayed inside the evidence it was given.
+
+**Where it did not help.** Across all 8 chunks in the whole portfolio, `hypotheses` came back
+empty every single time — not "wrong," but never populated at all, even when the observations
+already contained everything needed to state the obvious explanation. `search_terms` fired in
+2 of 8 chunks; `missing_information` fired in most. The likely cause is the prompt
+(`prompts/extract-v1.txt`): it tells the model to "separate observations from possible
+explanations" but never explicitly instructs it to attempt one, and `think: false` (chosen for
+latency) may be removing exactly the reasoning step hypothesis synthesis needs. This is left
+as an honest, measured finding rather than quietly patched — fixing it would mean either a
+`prompts/extract-v2.txt` with an explicit instruction and a documented before/after, or moving
+hypothesis synthesis to Claude (which already receives every observation and can propose
+explanations itself, per the investigation procedure in section 10) and treating Qwen's role
+as extraction-only. The second option is arguably the better architecture regardless: Claude
+is the frontier model in this design specifically to do the reasoning Qwen's extraction layer
+is not positioned to verify against itself.
+
+## 14. Open questions for you
 
 1. **Repo visibility (confirmed private):** keep it private until guide §12's ownership check
    is done, and commit nothing U of T-specific (SIDs, hostnames, internal paths) — fixtures
    stay fully synthetic.
-2. **Ollama on the Mac:** OK to install it (Homebrew or the app) and pull `qwen3:8b` (~5.2 GB)
-   for milestone 1?
-3. **Synthetic incident:** do you want me to invent a realistic one (e.g. a transport import
-   failing on a lock / RC 8 with a work-process trace), or would you rather describe the
-   shape of your real resolved incident, sanitised, so the fixture exercises the same path?
+2. ~~Ollama on the Mac~~ — done: installed via Homebrew, `qwen3:8b` pulled.
+3. ~~Synthetic incident~~ — done: a 4-incident portfolio exists (section 13) since no resolved
+   case was available.
+4. **The empty-hypotheses finding (section 13):** worth a `prompts/extract-v2.txt` experiment,
+   or worth just leaving hypothesis synthesis to Claude and simplifying Qwen's role to pure
+   extraction? Either is a small change; it's a judgment call on where the effort is worth it.
+5. **Next real incident:** milestone 5 is now "whenever the next real incident happens, export
+   it statically and run this for real" rather than a scheduled step — nothing to decide now,
+   just flagging that it's the next thing to actually test the architecture against.

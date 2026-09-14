@@ -1,0 +1,4 @@
+1 GWY01 20260911235959 destination SYN_PARTNER_01 : outbound call succeeded, response time 214 ms
+1 GWY02 20260912000003 destination SYN_PARTNER_01 : SNC/TLS setup failed, local certificate SYN_CLIENT_CERT
+1 GWY02 20260912000003 destination SYN_PARTNER_01 : certificate SYN_CLIENT_CERT validity end 2026-09-12 00:00:00
+1 GWY02 20260912000004 destination SYN_PARTNER_01 : SNC/TLS setup failed, local certificate SYN_CLIENT_CERT
