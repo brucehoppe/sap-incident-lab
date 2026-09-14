@@ -1,0 +1,20 @@
+{
+  "incident_id": "INC-SYN-001",
+  "summary": "Synthetic incident: a transport import fails with return code 8 during a background job window, coinciding with an enqueue lock held by an aborted dialog work process.",
+  "system": {
+    "sid": "SYN",
+    "product": "SAP S/4HANA (synthetic)",
+    "release": null,
+    "kernel": null,
+    "database": null
+  },
+  "time_window": {
+    "start": null,
+    "end": null,
+    "timezone": null
+  },
+  "files": [
+    {"path": "import-log.txt", "encoding": "utf-8", "timezone": null},
+    {"path": "workprocess-trace.txt", "encoding": "utf-8", "timezone": null}
+  ]
+}
