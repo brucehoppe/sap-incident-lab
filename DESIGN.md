@@ -316,8 +316,13 @@ added **beside** the existing `sap-notes` key:
 - Atomic writes via `os.replace`; no `rename` over existing files.
 - No POSIX-only APIs (`fcntl`, signals for cancellation).
 - Tests that depend on the OS are marked `windows_only` / `posix_only` rather than deleted.
+  `tests/unit/test_paths_windows.py` holds the junction/ADS proofs — written on the Mac,
+  necessarily untested here (`skipif` on `sys.platform`), real once run on Windows.
 - The Windows move is a checklist item, not a port: same `uv` command, Windows paths in the
   Desktop entry, run the `windows_only` tests.
+- `scripts/setup-windows.ps1` automates the whole checklist: uv, Ollama + the model, cloning
+  the repo, `uv sync`, the test suite including `-m windows_only`, the data directories, and
+  merging the Desktop config entry (backed up first, other entries left alone).
 
 ---
 

@@ -43,6 +43,30 @@ uv run sap-incident-lab probe      # smoke-test Ollama directly
 uv run pytest -q
 ```
 
+## Setting up on Windows
+
+`scripts/setup-windows.ps1` automates the move to a Windows machine: installs
+uv if missing, installs/pulls Ollama and the model, clones or updates the
+repo, runs `uv sync` and the test suite (including the `windows_only` tests
+that can't be proven on the Mac this was built on), creates the data
+directories, and merges the Claude Desktop entry (backing up the existing
+config first, leaving other servers untouched).
+
+The repo is private, so fetching the script needs an authenticated `git clone`
+first — it can't be piped from a raw GitHub URL without a token. From a
+fresh Windows machine with git and an SSH key registered on your GitHub
+account:
+
+```powershell
+git clone git@github.com:bruce-hoppe_uoft/sap-incident-lab.git
+cd sap-incident-lab
+.\scripts\setup-windows.ps1
+```
+
+The script itself also clones/updates the repo (to `-InstallDir`, default
+`%USERPROFILE%\sap-incident-lab`), so re-running it from anywhere keeps it
+up to date — see the script's own `.SYNOPSIS`/parameter docs for options.
+
 ## Run as an MCP server
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`,
