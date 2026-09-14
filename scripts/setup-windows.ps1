@@ -180,8 +180,8 @@ if (-not (Test-Path $configDir)) {
 }
 
 if (Test-Path $configPath) {
-    $backupPath = "$configPath.bak-$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Copy-Item $configPath $backupPath
+    $backupPath = "$configPath.bak-$(Get-Date -Format 'yyyyMMddHHmmssfff')"
+    Copy-Item -LiteralPath $configPath -Destination $backupPath
     Write-Host "    Backed up existing config to $backupPath"
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
 } else {
@@ -208,7 +208,15 @@ if ($config.mcpServers.PSObject.Properties.Name -contains 'sap-incident-lab') {
 }
 $config.mcpServers | Add-Member -NotePropertyName 'sap-incident-lab' -NotePropertyValue $entry
 
-$config | ConvertTo-Json -Depth 20 | Set-Content -Path $configPath -Encoding UTF8
+$configTempPath = "$configPath.tmp-$([guid]::NewGuid().ToString('N'))"
+try {
+    $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configTempPath -Encoding UTF8
+    Get-Content -LiteralPath $configTempPath -Raw | ConvertFrom-Json | Out-Null
+    Move-Item -LiteralPath $configTempPath -Destination $configPath -Force
+} catch {
+    Remove-Item -LiteralPath $configTempPath -Force -ErrorAction SilentlyContinue
+    throw
+}
 Write-Host "    Wrote $configPath (other mcpServers entries, e.g. sap-notes, are untouched)"
 
 # ---------------------------------------------------------------------------
