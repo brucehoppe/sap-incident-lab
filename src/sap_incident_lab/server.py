@@ -16,6 +16,7 @@ from mcp.server import MCPServer
 
 from .config import Settings, get_settings
 from .errors import ToolError
+from .evidence.registry import describe_files, list_incidents, load_files, read_evidence_window
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -176,5 +177,50 @@ def build_server() -> ServerBundle:
             "config_error": config_error,
             **ollama_status,
         }
+
+    @server.tool(
+        description=(
+            "List incident IDs that have a valid incident.json under the configured "
+            "evidence root. Call before list_files if the incident ID is not already known."
+        )
+    )
+    @audited("incident_lab_list_incidents")
+    async def incident_lab_list_incidents() -> dict[str, Any]:
+        return {"incident_ids": list_incidents(settings)}
+
+    @server.tool(
+        description=(
+            "Inventory an incident's registered evidence files: file IDs, relative names, "
+            "sha256 hashes, sizes, line counts, and manifest system/time-window facts "
+            "(with nulls left visible rather than guessed). Call before requesting analysis "
+            "or exact evidence lines — file_id and sha256 from this result are required by "
+            "incident_lab_get_evidence and incident_lab_start_analysis."
+        )
+    )
+    @audited("incident_lab_list_files")
+    async def incident_lab_list_files(incident_id: str) -> dict[str, Any]:
+        manifest, records = load_files(settings, incident_id)
+        return describe_files(manifest, records)
+
+    @server.tool(
+        description=(
+            "Return exact, numbered source lines from one registered evidence file, plus "
+            "its sha256 for citation. Pass expected_sha256 from incident_lab_list_files; a "
+            "mismatch means the file changed since inventory and returns SOURCE_CHANGED. "
+            "A large range may come back 'clipped' with next_start_line set — call again "
+            "from there to continue. Use this to verify any claim before citing it."
+        )
+    )
+    @audited("incident_lab_get_evidence")
+    async def incident_lab_get_evidence(
+        incident_id: str,
+        file_id: str,
+        start_line: int,
+        end_line: int,
+        expected_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        return read_evidence_window(
+            settings, incident_id, file_id, start_line, end_line, expected_sha256
+        )
 
     return ServerBundle(server=server, settings=settings)
