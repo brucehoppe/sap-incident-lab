@@ -1,0 +1,9 @@
+Trc file: "dev_w3", trc level: 1, release: "synthetic"
+Mon Sep 10 09:31:40 2026
+*** ERROR => ENQUEUE: lock argument for table /SYN/CI_INCIDENT already held [enqxx.c 812]
+Mon Sep 10 09:31:40 2026
+    owner client: 100, owner user: BATCH_SYN, owner transaction id: 0000004711
+Mon Sep 10 09:31:41 2026
+*** ERROR => work process terminated abnormally (SIGTERM received while holding lock)
+Mon Sep 10 09:33:44 2026
+    work process restarted; lock table entry for /SYN/CI_INCIDENT persisted past restart

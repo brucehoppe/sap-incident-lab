@@ -9,9 +9,9 @@
     rather than re-cloned if it exists, and the Desktop config is merged
     (never overwritten) with a timestamped backup taken first.
 
-    Does NOT touch INCIDENT_LAB_ROOT contents, any existing mcpServers
-    entries (e.g. sap-notes), or run pytest's windows_only marker for you --
-    that's still a manual step worth doing once, called out at the end.
+    Leaves existing evidence and other MCP servers intact. Runs the full test
+    suite once, including Windows-specific tests. Stops on failed verification.
+    The shared Python setup command backs up and merges Desktop configuration.
 
 .PARAMETER RepoUrl
     Git URL to clone/pull. Defaults to the private GitHub repo; you need SSH
@@ -64,13 +64,14 @@ function Test-CommandExists {
 }
 
 # ---------------------------------------------------------------------------
-Write-Step "Checking prerequisites (git, python)"
+Write-Step "Checking prerequisite (git)"
 
-foreach ($cmd in @('git', 'python')) {
+foreach ($cmd in @('git')) {
     if (-not (Test-CommandExists $cmd)) {
         throw "'$cmd' is not on PATH. Install it first, then re-run this script."
     }
     $version = & $cmd --version
+    if ($LASTEXITCODE -ne 0) { throw "$cmd --version failed." }
     Write-Host "    $cmd -> $version"
 }
 
@@ -103,6 +104,8 @@ if (-not (Test-CommandExists 'ollama')) {
         Write-Host "    Attempting 'winget install Ollama.Ollama' ..."
         try {
             winget install --id Ollama.Ollama --accept-source-agreements --accept-package-agreements
+            if ($LASTEXITCODE -ne 0) { throw "winget install failed (exit code $LASTEXITCODE)." }
+            $env:PATH = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
         } catch {
             Write-Warn "winget install failed: $($_.Exception.Message)"
         }
@@ -125,117 +128,62 @@ Write-Step "Getting the repo at $InstallDir"
 
 if (Test-Path (Join-Path $InstallDir '.git')) {
     Write-Host "    Repo already present; pulling latest instead of cloning."
-    git -C $InstallDir pull
+    git -C $InstallDir pull --ff-only
+    if ($LASTEXITCODE -ne 0) { throw "Git update failed. Resolve the checkout problem, then rerun setup." }
 } elseif (Test-Path $InstallDir) {
     Write-Warn "$InstallDir exists but is not a git repo. Not touching it -- move it aside or pass a different -InstallDir."
     throw "InstallDir exists and is not a git checkout."
 } else {
     git clone $RepoUrl $InstallDir
+    if ($LASTEXITCODE -ne 0) { throw "Git clone failed. Check repository access, then rerun setup." }
 }
 
 # ---------------------------------------------------------------------------
 Write-Step "Installing Python dependencies (uv sync)"
 Push-Location $InstallDir
 try {
-    uv sync --extra dev
+    uv sync --locked --extra dev
     if ($LASTEXITCODE -ne 0) { throw "uv sync failed (exit code $LASTEXITCODE)." }
 
     if (-not $SkipTests) {
         Write-Step "Running the test suite on this machine"
         uv run pytest -q
         if ($LASTEXITCODE -ne 0) {
-            Write-Warn "Tests failed on this machine -- see output above. Continuing setup anyway, but investigate before trusting real evidence to it."
-        } else {
-            Write-Host "    All tests passed."
+            throw "Tests failed. Fix the reported failures before registering the server."
         }
+        Write-Host "    All tests passed (including Windows-specific tests)."
 
-        Write-Step "Running the windows_only test group (junctions, ADS -- Mac can't prove these)"
-        uv run pytest -m windows_only -q
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warn "windows_only tests failed or none exist yet -- see DESIGN.md section 11."
-        }
     }
 } finally {
     Pop-Location
 }
 
 # ---------------------------------------------------------------------------
-Write-Step "Creating data directories under $DataDir"
+Write-Step "Creating data folders and registering Claude Desktop"
 
-$incidentsDir = Join-Path $DataDir 'incidents'
-$outputDir = Join-Path $DataDir 'outputs'
-$evalDir = Join-Path $DataDir 'evaluation-private'
-foreach ($dir in @($incidentsDir, $outputDir, $evalDir)) {
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    Write-Host "    $dir"
-}
-
-# ---------------------------------------------------------------------------
-Write-Step "Registering sap-incident-lab in Claude Desktop"
-
-$configPath = Join-Path $env:APPDATA 'Claude\claude_desktop_config.json'
-$configDir = Split-Path $configPath -Parent
-if (-not (Test-Path $configDir)) {
-    New-Item -ItemType Directory -Force -Path $configDir | Out-Null
-}
-
-if (Test-Path $configPath) {
-    $backupPath = "$configPath.bak-$(Get-Date -Format 'yyyyMMddHHmmssfff')"
-    Copy-Item -LiteralPath $configPath -Destination $backupPath
-    Write-Host "    Backed up existing config to $backupPath"
-    $config = Get-Content $configPath -Raw | ConvertFrom-Json
-} else {
-    Write-Host "    No existing config found; creating a new one."
-    $config = [pscustomobject]@{}
-}
-
-if (-not ($config.PSObject.Properties.Name -contains 'mcpServers')) {
-    $config | Add-Member -NotePropertyName 'mcpServers' -NotePropertyValue ([pscustomobject]@{})
-}
-
-$entry = [pscustomobject]@{
-    command = $uvPath
-    args    = @('run', '--directory', $InstallDir, 'sap-incident-lab', 'serve')
-    env     = [pscustomobject]@{
-        INCIDENT_LAB_ROOT   = $incidentsDir
-        INCIDENT_LAB_OUTPUT = $outputDir
-        INCIDENT_LAB_MODEL  = $Model
-    }
-}
-
-if ($config.mcpServers.PSObject.Properties.Name -contains 'sap-incident-lab') {
-    $config.mcpServers.PSObject.Properties.Remove('sap-incident-lab')
-}
-$config.mcpServers | Add-Member -NotePropertyName 'sap-incident-lab' -NotePropertyValue $entry
-
-$configTempPath = "$configPath.tmp-$([guid]::NewGuid().ToString('N'))"
+Push-Location $InstallDir
 try {
-    $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $configTempPath -Encoding UTF8
-    Get-Content -LiteralPath $configTempPath -Raw | ConvertFrom-Json | Out-Null
-    Move-Item -LiteralPath $configTempPath -Destination $configPath -Force
-} catch {
-    Remove-Item -LiteralPath $configTempPath -Force -ErrorAction SilentlyContinue
-    throw
+    uv run --locked sap-incident-lab setup --data-dir $DataDir --model $Model
+    if ($LASTEXITCODE -ne 0) { throw "Application setup failed. See the recovery message above." }
+
+    Write-Step "Checking folders, model, and a synthetic extraction"
+    uv run --locked sap-incident-lab doctor
+    if ($LASTEXITCODE -ne 0) { throw "Diagnostics failed. Follow the suggested next steps, then rerun doctor." }
+} finally {
+    Pop-Location
 }
-Write-Host "    Wrote $configPath (other mcpServers entries, e.g. sap-notes, are untouched)"
 
-# ---------------------------------------------------------------------------
-Write-Step "Done"
-
+Write-Step "Setup verified"
 Write-Host @"
 
-Next steps:
-  1. Fully quit Claude Desktop (not just close the window) and reopen it.
-  2. Ask it to call incident_lab_health -- expect Ollama reachable,
-     '$Model' installed, and config_valid: true.
-  3. Confirm your existing sap-notes tools are still present.
-  4. Put an incident's exported log/trace files under:
-       $incidentsDir\<INCIDENT_ID>\
-     alongside an incident.json manifest -- see DESIGN.md section 7 and the
-     README for the exact format.
+Fully quit and reopen Claude Desktop.
+For a first investigation, run from ${InstallDir}:
+  uv run sap-incident-lab demo
+Then ask Claude:
+  Investigate INC-DEMO-001 and explain why the import failed.
 
-Before pointing this at a REAL incident's evidence: DESIGN.md section 3
-treats real SAP traces as sensitive until you've confirmed the data
-classification and that this Desktop environment is the approved one for
-it. Everything tested so far has been synthetic.
+To add your own selected text exports:
+  uv run sap-incident-lab import INC-123 'C:\exports\import.log' 'C:\exports\trace.txt'
+
+See docs/quickstart.md for progress, resume, and reporting.
 "@ -ForegroundColor Green

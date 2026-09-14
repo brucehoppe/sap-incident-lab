@@ -1,0 +1,10 @@
+1 ETP113X 20260910093011                     import monitor started for request SYNK900123
+1 ETP113X 20260910093012                     phase MOVE_NAMETAB started
+1 ETP113X 20260910093118                     phase MOVE_NAMETAB completed
+1 ETP113X 20260910093118                     phase ACTIVATION started
+4 ETP001  "table/view &TAB& could not be activated"
+   TAB: /SYN/CI_INCIDENT
+2 ETP110  "activation of object &OBJ& terminated"
+   OBJ: /SYN/CI_INCIDENT
+1 ETP113X 20260910093344                     phase ACTIVATION completed with return code 8
+1 ETP113X 20260910093344                     import monitor ended for request SYNK900123, return code 0008

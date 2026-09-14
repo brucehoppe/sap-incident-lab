@@ -31,6 +31,14 @@ JobState = Literal[
 _LIVE_STATES: frozenset[JobState] = frozenset({"queued", "running", "cancelling"})
 
 
+class PlannedChunk(BaseModel):
+    chunk_id: str
+    file_id: str
+    start_line: int
+    end_line: int
+    oversize: bool = False
+
+
 class JobRecord(BaseModel):
     job_id: str
     incident_id: str
@@ -47,6 +55,9 @@ class JobRecord(BaseModel):
     skipped_chunk_ids: list[str] = Field(default_factory=list)  # oversize, never sent to the model
     unprocessed_chunk_ids: list[str] = Field(default_factory=list)  # over budget, or cut short
     error: str | None = None
+    file_hashes: dict[str, str] = Field(default_factory=dict)
+    plan: list[PlannedChunk] = Field(default_factory=list)
+    attempts: int = 1
 
 
 def new_job_id(incident_id: str) -> str:

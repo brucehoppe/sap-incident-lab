@@ -6,42 +6,53 @@ traceable back to exact source lines. See [`DESIGN.md`](DESIGN.md) for the
 architecture and [`docs/implementation-guide.md`](docs/implementation-guide.md)
 for the original planning document it corrects.
 
-## Status
+## Start here
 
-Milestones 0–4 are done: all eight tool contracts work end-to-end against a
-synthetic incident, including one live run through a real `qwen3:8b` model.
-See [`DESIGN.md`](DESIGN.md) section 12 for the milestone table.
+See the [first-investigation walkthrough](docs/quickstart.md) for setup, import,
+progress, resume, and reports. After installing uv and Ollama:
 
-- `incident_lab_health` — server/Ollama/config status
-- `incident_lab_list_incidents`, `incident_lab_list_files`, `incident_lab_get_evidence`
-  — the evidence layer: hashed, path-contained, exact numbered source lines
-- `incident_lab_start_analysis`, `incident_lab_get_analysis`, `incident_lab_cancel_analysis`
-  — bounded, chunked Qwen extraction as an async job, with restart recovery
-- `incident_lab_save_report` — versioned, Claude-authored Markdown reports
-
-115 tests pass, with 3 Windows-specific tests skipped on macOS (`uv run pytest`); ruff and `mypy --strict` are clean.
-
-With no resolved incident available, milestones 5–6 became a 4-case synthetic
-portfolio instead (`tests/fixtures/INC-SYN-00{1,2,3,4}`) covering distinct
-failure shapes — a stale enqueue lock, an infinite-loop batch job, a
-memory-exhaustion short dump, an expired RFC certificate. All four ran live
-against `qwen3:8b`. See DESIGN.md section 13 for what that run showed,
-including a real limitation it found: `hypotheses` came back empty in every
-one of 8 chunks, even where the observations already contained the answer.
-
-Milestone 7 (publication) still needs your sign-off on releasing this repo
-publicly. Milestone 5 in its original sense — a real resolved incident —
-is now just "whenever the next real incident happens" rather than a
-scheduled step; see DESIGN.md sections 3 and 14.
-
-## Setup
-
-```bash
-uv sync --extra dev
-cp config.example.env .env.local   # then edit paths
-uv run sap-incident-lab probe      # smoke-test Ollama directly
-uv run pytest -q
+```sh
+uv sync --locked --extra dev
+uv run sap-incident-lab setup --pull-model
+uv run sap-incident-lab doctor
+uv run sap-incident-lab demo
 ```
+
+Restart Claude Desktop, then ask:
+
+> Investigate INC-DEMO-001 and explain why the import failed.
+
+To investigate your exports, run `sap-incident-lab import INC-123 FILE [FILE ...]`.
+The importer creates the manifest; unknown metadata stays unknown. Run `setup --interactive` to choose your folder/model, or `setup --no-desktop` for CLI-only
+configuration. Setup backs up existing configuration and preserves other servers.
+
+## Tools
+
+- `incident_lab_health` — server/Ollama/configuration status.
+- `incident_lab_investigate` — inventory and start analysis using an incident ID and question.
+- `incident_lab_get_analysis`, `incident_lab_resume_analysis`,
+  `incident_lab_cancel_analysis` — progress, bounded continuation, and cancellation.
+- `incident_lab_report_template`, `incident_lab_save_report` — consistent report
+  scaffolds and versioned Markdown.
+- `incident_lab_list_incidents`, `incident_lab_list_files`,
+  `incident_lab_get_evidence`, `incident_lab_start_analysis` — detailed inventory,
+  exact source lines, and targeted analysis.
+
+Resume preserves successful chunks and checks source hashes before continuing.
+Coverage is explicit; partial extraction is never a complete incident review.
+Reports remain analyst-authored and require citation review.
+
+## Validation
+
+Run `uv run pytest`, `uv run ruff check src tests`, and `uv run mypy src`.
+The synthetic walkthrough covers setup, demo import, investigation, progress,
+resume, evidence retrieval and report saving through the MCP client. Model
+responses in automated tests are mocked. Native Windows, real Ollama and
+Claude Desktop acceptance must be verified on the target machine.
+
+The original four-case synthetic portfolio and its live Qwen observations are
+documented in DESIGN.md. Real resolved-incident evaluation remains pending;
+publication remains a separate decision.
 
 ## Setting up on Windows
 
@@ -69,14 +80,14 @@ up to date — see the script's own `.SYNOPSIS`/parameter docs for options.
 
 ## Run as an MCP server
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`,
-alongside any existing `mcpServers` entries — see DESIGN.md section 10 for
-the full example.
+The setup command registers the server with Claude Desktop automatically.
+For other MCP clients, run `sap-incident-lab serve` over stdio and provide
+`INCIDENT_LAB_CONFIG` or the documented environment variables.
 
 ## Data
 
 Real incident evidence never lives in this repository. It lives under a
 separate data root (`INCIDENT_LAB_ROOT`) that only this server reads, and an
 `evaluation-private/` directory that is never configured into the server.
-Synthetic fixtures under `tests/fixtures/` are the only incident data
-committed here.
+Only synthetic fixtures under `tests/fixtures/` and the bundled
+`src/sap_incident_lab/demo/` evidence are committed here.

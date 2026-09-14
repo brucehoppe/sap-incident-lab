@@ -6,7 +6,7 @@ import structlog
 
 from .. import errors
 from ..config import Settings
-from ..evidence.registry import get_file
+from ..evidence.registry import load_files
 from ..jobs.store import JobStore, now_iso
 from .chunking import Chunk, chunk_lines
 from .ollama_client import extract_with_repair
@@ -46,12 +46,17 @@ def plan_chunks(
         raise errors.ToolError("RANGE_INVALID", "Analysis scope is empty.", "Select at least one file or range.")
     if ranges is not None and any(r.file_id not in file_ids for r in ranges):
         raise errors.ToolError("RANGE_INVALID", "A range references an unselected file.", "Include each range file in file_ids.")
+    _, records = load_files(settings, incident_id)
+    by_id = {record.file_id: record for record in records}
+    for file_id in file_ids:
+        if file_id not in by_id:
+            raise errors.file_not_found(incident_id, file_id)
     requests = ranges if ranges is not None else [
-        RangeRequest(file_id, 1, get_file(settings, incident_id, file_id).line_count)
-        for file_id in file_ids
+        RangeRequest(file_id, 1, by_id[file_id].line_count)
+        for file_id in file_ids if by_id[file_id].line_count
     ]
     for req in requests:
-        record = get_file(settings, incident_id, req.file_id)
+        record = by_id[req.file_id]
         file_hashes[req.file_id] = record.sha256
         if req.start_line < 1 or req.end_line < req.start_line or req.end_line > record.line_count:
             raise errors.range_invalid(req.file_id, req.start_line, req.end_line)
@@ -65,10 +70,12 @@ def plan_chunks(
             overlap_lines=settings.chunk_overlap_lines,
         )
         all_chunks.extend(chunks)
+    if not all_chunks:
+        raise errors.ToolError("EMPTY_EVIDENCE", "The selected files contain no lines.", "Import nonempty text exports.")
     return list({chunk.chunk_id: chunk for chunk in all_chunks}.values()), file_hashes
 
 
-async def run_job(
+async def _run_job(
     settings: Settings,
     store: JobStore,
     job_id: str,
@@ -89,7 +96,7 @@ async def run_job(
     job.started_at = now_iso()
     store.save(job)
 
-    processed: list[str] = []
+    processed: list[str] = list(job.processed_chunk_ids)
     failed_statuses: list[str] = []
     cancelled_mid_run = False
     stopped_early_error: str | None = None
@@ -111,7 +118,7 @@ async def run_job(
                 model=settings.model,
             )
             store.save_chunk_result(job_id, outcome)
-            job.skipped_chunk_ids.append(chunk.chunk_id)
+            job.skipped_chunk_ids = sorted(set(job.skipped_chunk_ids) | {chunk.chunk_id})
             store.save(job)
             continue
 
@@ -161,6 +168,11 @@ async def run_job(
         else:
             failed_statuses.append(chunk.chunk_id)
         job.processed_chunk_ids = processed
+        if cancel_event.is_set():
+            job.state = "cancelling"
+        job.unprocessed_chunk_ids = [
+            cid for cid in job.unprocessed_chunk_ids if cid not in processed
+        ]
         store.save(job)
 
         _LOG.info(
@@ -178,7 +190,7 @@ async def run_job(
     def _mark_remaining_unprocessed() -> None:
         remaining = [c.chunk_id for c in chunks if c.chunk_id not in job.processed_chunk_ids
                      and c.chunk_id not in job.skipped_chunk_ids]
-        job.unprocessed_chunk_ids = sorted(set(job.unprocessed_chunk_ids) | set(remaining))
+        job.unprocessed_chunk_ids = sorted((set(job.unprocessed_chunk_ids) | set(remaining)) - set(job.processed_chunk_ids) - set(job.skipped_chunk_ids))
 
     _mark_remaining_unprocessed()
 
@@ -201,3 +213,26 @@ async def run_job(
 
     store.save(job)
     _LOG.info("job_finished", job_id=job_id, state=job.state)
+
+
+async def run_job(
+    settings: Settings, store: JobStore, job_id: str, chunks: list[Chunk],
+    file_hashes: dict[str, str], question: str, cancel_event: asyncio.Event,
+) -> None:
+    """Persist a terminal state even when a background task fails unexpectedly."""
+    try:
+        await _run_job(settings, store, job_id, chunks, file_hashes, question, cancel_event)
+    except (Exception, asyncio.CancelledError) as exc:
+        job = store.load(job_id)
+        if job is not None:
+            job.state = "interrupted" if isinstance(exc, asyncio.CancelledError) else "failed"
+            job.ended_at = now_iso()
+            job.error = "Analysis was interrupted." if isinstance(exc, asyncio.CancelledError) else "Analysis stopped unexpectedly; run doctor before resuming."
+            job.unprocessed_chunk_ids = sorted(
+                (set(job.unprocessed_chunk_ids) | set(job.accepted_chunk_ids))
+                - set(job.processed_chunk_ids) - set(job.skipped_chunk_ids)
+            )
+            store.save(job)
+        _LOG.warning("job_interrupted", job_id=job_id, error_type=type(exc).__name__)
+        if isinstance(exc, asyncio.CancelledError):
+            raise

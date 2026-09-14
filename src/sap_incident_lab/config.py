@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -95,6 +97,19 @@ class Settings(BaseSettings):
         return None
 
 
+def config_path() -> Path:
+    return Path(os.environ.get("INCIDENT_LAB_CONFIG", str(Path.home() / ".config/sap-incident-lab/config.json"))).expanduser().resolve()
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    env_settings = Settings()
+    path = config_path()
+    if not path.exists():
+        return env_settings
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Saved configuration must be a JSON object. Run setup or restore its backup.")
+    # Environment and dotenv values retain precedence over persisted setup defaults.
+    data.update({name: getattr(env_settings, name) for name in env_settings.model_fields_set})
+    return Settings(**data)

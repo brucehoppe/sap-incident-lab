@@ -393,3 +393,54 @@ is not positioned to verify against itself.
 5. **Next real incident:** milestone 5 is now "whenever the next real incident happens, export
    it statically and run this for real" rather than a scheduled step — nothing to decide now,
    just flagging that it's the next thing to actually test the architecture against.
+
+## 15. Guided workflow additions (2026-09-14)
+
+The first-use path is now documented in [docs/quickstart.md](docs/quickstart.md).
+This section extends the original milestone/tool descriptions above.
+
+- CLI `setup` creates separate evidence/output directories, persists configuration
+  and registers the current Python executable with Desktop. It backs up JSON before
+  atomic replacement and preserves unrelated Desktop entries. Explicit environment
+  and dotenv values override saved defaults. `--config` selects an independent setup.
+- CLI `doctor` checks configuration, directory access, the model inventory, and a
+  small synthetic structured extraction. `probe` is now an alias. Diagnostic failure
+  returns exit code 1 with a recovery step. `--no-extraction` is a lighter check.
+- CLI `import` copies explicitly selected text exports and generates a manifest,
+  retaining unknown metadata as null. Imports refuse existing incidents, validate
+  staged bytes, and clean up a failed copy. Arbitrary-file import is not exposed
+  through MCP. The packaged `demo` contains synthetic evidence only.
+- MCP `incident_lab_investigate` inventories all registered files from an incident
+  and starts a bounded job using only the incident ID and question. Existing
+  targeted tools remain available.
+- New jobs persist the complete chunk plan (IDs, bounds and oversize flags), source
+  hashes, and attempt count. They do not persist another full copy of source text.
+  `incident_lab_resume_analysis` verifies all recorded hashes and the model/prompt
+  identity, then processes one bounded batch of unfinished chunks in the same job.
+  Successful results are retained. Old jobs lacking a plan remain readable.
+- `incident_lab_get_analysis` includes completed, failed, pending and skipped counts,
+  a chunk coverage percentage, a summary and a next step. Failed chunks are a subset
+  of remaining chunks. Oversize skips stay explicit and require smaller exports.
+- `incident_lab_report_template` creates a draft with factual per-job coverage and
+  current source inventory. Conclusions remain placeholders; source changes are
+  flagged. Reports from overlapping jobs cannot sum their coverage.
+- Background exceptions and normal shutdown persist a terminal/interrupted state
+  when storage is available. Existing crash recovery marks remaining coverage.
+- The Windows wrapper uses the shared setup/doctor commands, checks Git exit codes,
+  stops on failed tests, and runs the suite once.
+
+Validation performed locally: 139 tests passed, three Windows-specific tests skipped;
+ruff, strict mypy, PowerShell installer control-flow tests, and source/wheel builds
+passed. A fresh wheel environment passed setup, demo import, repeat setup, packaged
+resource loading, and a real stdio MCP handshake using its generated Desktop entry.
+The doctor passed a real synthetic extraction with local `qwen3:8b`.
+
+The new CI workflow targets macOS and Windows and runs tests, lint/types, PowerShell
+control-flow checks, and fresh-wheel consumer verification. It has not run remotely
+as part of this local implementation. Its action configuration follows the official
+[checkout](https://github.com/actions/checkout) and
+[setup-uv](https://github.com/astral-sh/setup-uv) documentation.
+
+These checks do not prove native Windows installation, Claude Desktop UI integration,
+or real-incident analytical accuracy. The quickstart includes the remaining target
+machine acceptance steps.

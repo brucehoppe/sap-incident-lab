@@ -57,3 +57,59 @@ def save_report(
         "claude_authored": True,
         "mechanically_verified": False,
     }
+
+
+def report_template(settings: Settings, incident_id: str, job_ids: list[str]) -> dict[str, Any]:
+    from .analysis.workflow import progress
+    from .evidence.registry import load_files
+    from .jobs.store import JobStore
+
+    manifest, records = load_files(settings, incident_id)
+    assert settings.output is not None
+    store = JobStore(settings.output)
+    jobs = []
+    for job_id in dict.fromkeys(job_ids):
+        job = store.load(job_id)
+        if job is None:
+            raise errors.job_not_found(job_id)
+        if job.incident_id != incident_id:
+            raise errors.ToolError("JOB_INCIDENT_MISMATCH", "The job belongs to a different incident.",
+                                   "Use only job IDs from the report incident.")
+        jobs.append(job)
+    # Deliberately leave conclusions blank; a template cannot verify model claims.
+    lines = [
+        f"# Incident report: {incident_id}", "",
+        "Draft analysis. Claims and citations require human review.", "",
+        "## Summary", "", "[Describe the incident and impact; distinguish facts from inference.]", "",
+        "## Scope and coverage", "",
+    ]
+    if not jobs:
+        lines.append("No analysis jobs selected; analysis coverage has not been established.")
+    for job in jobs:
+        detail = progress(store, job)
+        lines.append(f"- Job {job.job_id} ({job.state}): {detail['summary']}")
+        lines.append(f"  Model: {job.model}; prompt: {job.prompt_version}; attempts: {job.attempts}.")
+        for file_id, sha256 in job.file_hashes.items():
+            current = next((r.sha256 for r in records if r.file_id == file_id), None)
+            if current != sha256:
+                lines.append(f"  SOURCE CHANGED: {file_id}; job hash {sha256}. Reinvestigate before citing current lines.")
+    lines += ["", "Coverage is per job; overlapping jobs must not be added together.",
+              "Completed extraction does not establish a verified root cause.", "",
+              "## Evidence inventory", ""]
+    for record in records:
+        name = record.rel_path.replace("\n", " ").replace("\r", " ").replace("`", "'")
+        lines.append(f"- {record.file_id}: {name}; {record.line_count} lines; SHA-256 {record.sha256}.")
+    lines += [
+        "", "## Findings and evidence", "",
+        "[For each finding, cite file ID, exact line range and SHA-256 returned by incident_lab_get_evidence.]",
+        "", "## Hypotheses", "",
+        "[For each hypothesis, list supporting evidence, contradicting evidence and a discriminating check.]",
+        "", "## Missing information", "",
+        "[Record unknown system facts, export timezone and gaps in evidence.]",
+        f"Declared SID: {manifest.system.sid or 'unknown'}. Declared timezone: {manifest.time_window.timezone or 'unknown'}.",
+        "", "## Next checks", "", "[Prioritized checks, owner and expected outcome.]",
+        "", "## Limitations", "",
+        "[Disclose failed, pending and skipped chunks; unverified claims; and any changed sources.]", "",
+    ]
+    return {"incident_id": incident_id, "job_ids": list(dict.fromkeys(job_ids)),
+            "markdown": "\n".join(lines), "mechanically_verified": False}
