@@ -8,9 +8,22 @@ for the original planning document it corrects.
 
 ## Status
 
-Milestone 0–1 (connectivity): the server starts, registers `incident_lab_health`,
-and a synchronous `probe` command confirms Ollama round-trips. Evidence tools
-(milestone 2) are not yet implemented.
+Milestones 0–4 are done: all seven tool contracts work end-to-end against a
+synthetic incident, including one live run through a real `qwen3:8b` model.
+See [`DESIGN.md`](DESIGN.md) section 12 for the milestone table.
+
+- `incident_lab_health` — server/Ollama/config status
+- `incident_lab_list_incidents`, `incident_lab_list_files`, `incident_lab_get_evidence`
+  — the evidence layer: hashed, path-contained, exact numbered source lines
+- `incident_lab_start_analysis`, `incident_lab_get_analysis`, `incident_lab_cancel_analysis`
+  — bounded, chunked Qwen extraction as an async job, with restart recovery
+- `incident_lab_save_report` — versioned, Claude-authored Markdown reports
+
+91 tests pass (`uv run pytest`); ruff and `mypy --strict` are clean.
+
+Milestones 5–7 (a real incident, evaluation, publication) need a resolved
+incident, the Windows work laptop and institutional Claude Desktop, and your
+sign-off on data classification — see DESIGN.md sections 3 and 13.
 
 ## Setup
 

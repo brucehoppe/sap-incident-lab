@@ -21,6 +21,7 @@ from .config import Settings, get_settings
 from .errors import ToolError
 from .evidence.registry import describe_files, list_incidents, load_files, read_evidence_window
 from .jobs.store import JobRecord, JobStore, new_job_id, now_iso
+from .reporting import save_report
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -383,5 +384,24 @@ def build_server() -> ServerBundle:
             job.state = "cancelling"
             store.save(job)
         return {"job_id": job_id, "state": job.state}
+
+    @server.tool(
+        description=(
+            "Save a Claude-authored Markdown report for this incident under the "
+            "configured output root. Each save gets its own timestamped file — a prior "
+            "report is never overwritten. Not mechanically verified: cite exact evidence "
+            "lines via incident_lab_get_evidence before writing a claim into the report, "
+            "and label it as your own analysis, not a verified determination."
+        )
+    )
+    @audited("incident_lab_save_report")
+    async def incident_lab_save_report(
+        incident_id: str, job_ids: list[str], markdown: str
+    ) -> dict[str, Any]:
+        store = _get_job_store(settings)
+        for job_id in job_ids:
+            if store.load(job_id) is None:
+                raise errors.job_not_found(job_id)
+        return save_report(settings, incident_id, job_ids, markdown)
 
     return ServerBundle(server=server, settings=settings)

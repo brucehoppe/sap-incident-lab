@@ -336,3 +336,26 @@ async def test_lifespan_marks_stale_running_jobs_interrupted_on_startup(
     reloaded = store.load(stale.job_id)
     assert reloaded is not None
     assert reloaded.state == "interrupted"
+
+
+@pytest.mark.asyncio
+async def test_save_report_tool_round_trip_through_the_client(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    await _setup_incident_env(monkeypatch, tmp_path)
+    bundle = build_server()
+
+    async with Client(bundle.server) as client:
+        rejected = await client.call_tool(
+            "incident_lab_save_report",
+            {"incident_id": "INC-SYN-001", "job_ids": ["no-such-job"], "markdown": "x"},
+        )
+        assert rejected.structured_content["error"]["code"] == "JOB_NOT_FOUND"
+
+        saved = await client.call_tool(
+            "incident_lab_save_report",
+            {"incident_id": "INC-SYN-001", "job_ids": [], "markdown": "# Report\n\nfindings"},
+        )
+        assert saved.structured_content["claude_authored"] is True
+        report_path = Path(tmp_path) / "outputs" / saved.structured_content["path"]
+        assert report_path.is_file()

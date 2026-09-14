@@ -220,7 +220,7 @@ Error messages never contain absolute paths or trace text (secure defaults, logg
 | `start_analysis` | 4 | `incident_id, file_ids, question, ranges?` | `job_id`, accepted chunks, chunks over budget (disclosed, not silently dropped) |
 | `get_analysis` | 4 | `job_id, cursor?` | state, progress, bounded results page, `next_cursor`, coverage |
 | `cancel_analysis` | 4 | `job_id` | new state (`cancelling` if a request is in flight) |
-| `save_report` | later | `incident_id, job_ids, markdown` | code-generated filename under `OUTPUT`, labelled Claude-authored |
+| `save_report` | 4 | `incident_id, job_ids, markdown` | code-generated filename under `OUTPUT`, labelled Claude-authored, never overwrites a prior save |
 
 Error codes (initial set): `CONFIG_INVALID`, `INCIDENT_NOT_FOUND`, `MANIFEST_INVALID`,
 `FILE_NOT_FOUND`, `PATH_REJECTED`, `FILE_TOO_LARGE`, `DECODE_FAILED`, `RANGE_INVALID`,
@@ -323,17 +323,21 @@ added **beside** the existing `sap-notes` key:
 
 ## 12. Milestones
 
-| # | Scope | Done when | Where |
-|---|---|---|---|
-| 0 | uv project, settings, logging, `.gitignore`, mono-repo ignore entry | `uv run sap-incident-lab --help` works; `sap-mcp-dev` has no diff | Mac |
-| 1 | `health` tool, Desktop entry, `probe` CLI for Ollama | Desktop lists both servers; `health` reports model installed; probe returns synthetic analysis with timings | Mac (needs Ollama installed) |
-| 2 | Manifest, registry, containment, `list_*`, `get_evidence` + tests | Exact lines round-trip; traversal/symlink/encoding/hash tests pass | Mac; junction tests on Windows |
-| 3 | Chunking, Ollama client, schema, validation (single synchronous chunk, internal only) | Synthetic file → validated observations with correct refs; malformed/truncated output rejected (mocked) | Mac |
-| 4 | Job store, worker, start/get/cancel, restart recovery | Long synthetic file ends `partial` with ranges; restart → `interrupted` | Mac |
-| 5 | First real incident | Supported shortlist; gaps explicit | **Windows work laptop, after §3 gate** |
-| 6–7 | Evaluation, publication | per guide §12 | |
+| # | Scope | Done when | Where | Status |
+|---|---|---|---|---|
+| 0 | uv project, settings, logging, `.gitignore`, mono-repo ignore entry | `uv run sap-incident-lab --help` works; `sap-mcp-dev` has no diff | Mac | **Done** |
+| 1 | `health` tool, Desktop entry, `probe` CLI for Ollama | Desktop lists both servers; `health` reports model installed; probe returns synthetic analysis with timings | Mac (needs Ollama installed) | **Done** — confirmed live in Desktop |
+| 2 | Manifest, registry, containment, `list_*`, `get_evidence` + tests | Exact lines round-trip; traversal/symlink/encoding/hash tests pass | Mac; junction tests on Windows | **Done** on Mac. Windows junction/ADS behavior is inferred from syntax-level rejection, not yet proven on Windows |
+| 3 | Chunking, Ollama client, schema, validation | Synthetic file → validated observations with correct refs; malformed/truncated output rejected (mocked) | Mac | **Done**, plus a live qwen3:8b run against INC-SYN-001 |
+| 4 | Job store, worker, start/get/cancel, restart recovery, `save_report` | Long synthetic file ends `partial` with ranges; restart → `interrupted` | Mac | **Done** — 91 tests total, including a caught-and-fixed bug (an unreachable Ollama endpoint used to strand a job in `running` forever) |
+| 5 | First real incident | Supported shortlist; gaps explicit | **Windows work laptop, after §3 gate** | **Blocked on you**: needs the work laptop, U of T Claude Desktop, and your classification sign-off on the real evidence (section 3) |
+| 6 | Evaluation (3–5 cases, then ~20–30) | Evidence of benefit or a clear explanation of failure | Windows laptop | **Blocked on 5**: needs real resolved cases to compare against |
+| 7 | Publication | Runnable repo, synthetic demo, article | Wherever the repo ends up | **Blocked on 5–6** and on the ownership/publication check in section 13 |
 
 Each milestone ends runnable, with tests and a README update, reviewed before the next begins.
+Everything buildable without real incident data or the Windows laptop (milestones 0–4, all
+seven tool contracts in section 8) is now implemented and tested end-to-end, including one
+live run through the actual model. Milestones 5–7 need real input from you — see section 13.
 
 ---
 
