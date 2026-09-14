@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
+from importlib.resources import files
 from typing import Any
 
 import httpx
@@ -11,11 +11,9 @@ from .. import errors
 from ..config import Settings
 from .schemas import ModelExtraction
 
-_PROMPT_PATH = Path(__file__).resolve().parents[3] / "prompts" / "extract-v1.txt"
-
 
 def load_system_prompt() -> str:
-    return _PROMPT_PATH.read_text(encoding="utf-8")
+    return files("sap_incident_lab").joinpath("prompts/extract-v1.txt").read_text(encoding="utf-8")
 
 
 def _numbered_excerpt(lines: list[str], start_line: int) -> str:
@@ -101,12 +99,20 @@ async def extract_once(
             body = response.json()
     except httpx.HTTPError as exc:
         raise errors.ollama_unavailable(type(exc).__name__) from exc
+    except ValueError:
+        return ExtractionResult(None, "invalid_output", time.monotonic() - start)
     elapsed = time.monotonic() - start
+
+    if not isinstance(body, dict):
+        return ExtractionResult(None, "invalid_output", elapsed)
 
     if body.get("done_reason") == "length":
         return ExtractionResult(None, "truncated_output", elapsed)
 
-    content = body.get("message", {}).get("content", "")
+    message = body.get("message")
+    if not isinstance(message, dict) or not isinstance(message.get("content"), str):
+        return ExtractionResult(None, "invalid_output", elapsed)
+    content = message["content"]
     try:
         extraction = ModelExtraction.model_validate_json(content)
     except (ValidationError, ValueError):

@@ -45,3 +45,13 @@ def test_save_report_records_job_ids_in_the_header(synthetic_incident: Settings)
     assert synthetic_incident.output is not None
     content = (synthetic_incident.output / result["path"]).read_text()
     assert "job-a, job-b" in content
+
+
+def test_report_directory_cannot_escape_through_symlink(synthetic_incident: Settings, tmp_path: Path) -> None:
+    assert synthetic_incident.output is not None
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (synthetic_incident.output / "reports").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(errors.ToolError):
+        save_report(synthetic_incident, "INC-SYN-001", [], "must not escape")
+    assert list(outside.iterdir()) == []

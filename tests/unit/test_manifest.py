@@ -42,3 +42,19 @@ def test_every_portfolio_fixture_has_a_valid_manifest(
     assert manifest.incident_id == incident_id
     assert manifest.summary
     assert len(manifest.files) == 2
+
+
+def test_manifest_symlink_cannot_read_outside_incident(tmp_path: Path) -> None:
+    incident = tmp_path / "incident"
+    incident.mkdir()
+    outside = tmp_path / "outside.json"
+    outside.write_text('{"incident_id": "INC-SYN-001"}')
+    (incident / "incident.json").symlink_to(outside)
+    with pytest.raises(ManifestError, match="outside"):
+        load_manifest(incident)
+
+
+def test_manifest_invalid_utf8_is_a_manifest_error(tmp_path: Path) -> None:
+    (tmp_path / "incident.json").write_bytes(b"\xff")
+    with pytest.raises(ManifestError, match="UTF-8"):
+        load_manifest(tmp_path)

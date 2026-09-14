@@ -359,3 +359,33 @@ async def test_save_report_tool_round_trip_through_the_client(
         assert saved.structured_content["claude_authored"] is True
         report_path = Path(tmp_path) / "outputs" / saved.structured_content["path"]
         assert report_path.is_file()
+
+
+@pytest.mark.parametrize("ranges", [[{}], [{"file_id": "f01", "start_line": 1.5, "end_line": 2}], [], [{"file_id": "f02", "start_line": 1, "end_line": 2}]])
+async def test_invalid_analysis_ranges_return_structured_errors(monkeypatch, tmp_path, ranges) -> None:
+    await _setup_incident_env(monkeypatch, tmp_path)
+    async with Client(build_server().server) as client:
+        result = await client.call_tool("incident_lab_start_analysis", {
+            "incident_id": "INC-SYN-001", "file_ids": ["f01"], "question": "q", "ranges": ranges,
+        })
+        assert result.structured_content["error"]["code"] == "RANGE_INVALID"
+
+
+async def test_report_rejects_a_job_from_another_incident(monkeypatch, tmp_path) -> None:
+    from sap_incident_lab.jobs.store import JobRecord, JobStore, now_iso
+
+    await _setup_incident_env(monkeypatch, tmp_path)
+    store = JobStore(tmp_path / "outputs")
+    store.create(JobRecord(job_id="another-job", incident_id="INC-SYN-002",
+                           file_ids=[], question="q", state="completed",
+                           created_at=now_iso(), model="qwen3:8b"))
+    async with Client(build_server().server) as client:
+        result = await client.call_tool("incident_lab_save_report", {
+            "incident_id": "INC-SYN-001", "job_ids": ["another-job"], "markdown": "x",
+        })
+        assert result.structured_content["error"]["code"] == "JOB_INCIDENT_MISMATCH"
+        result = await client.call_tool("incident_lab_get_analysis", {
+            "job_id": "another-job", "cursor": -1,
+        })
+        assert result.structured_content["error"]["code"] == "CURSOR_INVALID"
+    assert not (tmp_path / "outputs" / "reports").exists()

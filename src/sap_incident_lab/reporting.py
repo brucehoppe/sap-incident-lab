@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -30,10 +31,12 @@ def save_report(
         raise errors.incident_not_found(incident_id)
 
     reports_dir = settings.output / "reports" / incident_id
+    if not reports_dir.resolve().is_relative_to(settings.output.resolve()):
+        raise errors.path_rejected(incident_id)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     saved_at = datetime.now(UTC)
-    filename = f"report-{saved_at.strftime('%Y%m%dT%H%M%S%f')}Z.md"
+    filename = f"report-{saved_at.strftime('%Y%m%dT%H%M%S%f')}Z-{uuid.uuid4().hex[:8]}.md"
     path = reports_dir / filename
 
     header = (
@@ -43,7 +46,8 @@ def save_report(
         f"<!-- job_ids: {', '.join(job_ids)} -->\n"
         f"<!-- saved_at: {saved_at.isoformat()} -->\n\n"
     )
-    path.write_text(header + markdown, encoding="utf-8")
+    with path.open("x", encoding="utf-8") as report:
+        report.write(header + markdown)
 
     return {
         "incident_id": incident_id,

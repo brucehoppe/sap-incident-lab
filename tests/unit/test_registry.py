@@ -183,3 +183,13 @@ def test_each_portfolio_incident_loads_two_hashed_files(
     assert len(records) == 2
     assert all(len(r.sha256) == 64 for r in records)
     assert all(r.line_count > 0 for r in records)
+
+
+def test_inventory_excludes_incident_symlinks_outside_root(synthetic_incident: Settings, tmp_path: Path) -> None:
+    import shutil
+
+    assert synthetic_incident.root is not None
+    outside = tmp_path / "outside"
+    shutil.move(str(synthetic_incident.root / "INC-SYN-001"), outside)
+    (synthetic_incident.root / "INC-SYN-001").symlink_to(outside, target_is_directory=True)
+    assert list_incidents(synthetic_incident) == []

@@ -86,8 +86,10 @@ class Settings(BaseSettings):
             return f"INCIDENT_LAB_OUTPUT must be absolute, got {self.output}"
         if not self.root.is_dir():
             return "INCIDENT_LAB_ROOT does not exist or is not a directory"
+        if self.output.exists() and not self.output.is_dir():
+            return "INCIDENT_LAB_OUTPUT is not a directory"
         root_r = self.root.resolve()
-        output_r = self.output.resolve() if self.output.exists() else self.output
+        output_r = self.output.resolve()
         if root_r == output_r or root_r in output_r.parents or output_r in root_r.parents:
             return "INCIDENT_LAB_ROOT and INCIDENT_LAB_OUTPUT must not contain each other"
         return None

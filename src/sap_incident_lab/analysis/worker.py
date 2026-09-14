@@ -42,7 +42,11 @@ def plan_chunks(
     """
     file_hashes: dict[str, str] = {}
     all_chunks: list[Chunk] = []
-    requests = ranges or [
+    if not file_ids or (ranges is not None and not ranges):
+        raise errors.ToolError("RANGE_INVALID", "Analysis scope is empty.", "Select at least one file or range.")
+    if ranges is not None and any(r.file_id not in file_ids for r in ranges):
+        raise errors.ToolError("RANGE_INVALID", "A range references an unselected file.", "Include each range file in file_ids.")
+    requests = ranges if ranges is not None else [
         RangeRequest(file_id, 1, get_file(settings, incident_id, file_id).line_count)
         for file_id in file_ids
     ]
@@ -61,7 +65,7 @@ def plan_chunks(
             overlap_lines=settings.chunk_overlap_lines,
         )
         all_chunks.extend(chunks)
-    return all_chunks, file_hashes
+    return list({chunk.chunk_id: chunk for chunk in all_chunks}.values()), file_hashes
 
 
 async def run_job(
@@ -176,12 +180,12 @@ async def run_job(
                      and c.chunk_id not in job.skipped_chunk_ids]
         job.unprocessed_chunk_ids = sorted(set(job.unprocessed_chunk_ids) | set(remaining))
 
+    _mark_remaining_unprocessed()
+
     if stopped_early_error is not None:
-        _mark_remaining_unprocessed()
         job.state = "failed" if not processed else "partial"
         job.error = stopped_early_error
     elif cancelled_mid_run or cancel_event.is_set():
-        _mark_remaining_unprocessed()
         job.state = "cancelled"
     elif not processed and not job.skipped_chunk_ids:
         job.state = "failed"

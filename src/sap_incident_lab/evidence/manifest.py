@@ -48,12 +48,14 @@ class ManifestError(Exception):
 
 def load_manifest(incident_dir: Path) -> IncidentManifest:
     manifest_path = incident_dir / "incident.json"
+    if not manifest_path.resolve().is_relative_to(incident_dir.resolve()):
+        raise ManifestError("incident.json resolves outside the incident directory")
     if not manifest_path.is_file():
         raise ManifestError(f"no incident.json in {incident_dir.name}")
     try:
         raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ManifestError(f"incident.json is not valid JSON: {exc}") from exc
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ManifestError("incident.json is not valid JSON or could not be read as UTF-8") from exc
     try:
         return IncidentManifest.model_validate(raw)
     except ValidationError as exc:

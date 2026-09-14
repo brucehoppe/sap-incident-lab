@@ -113,3 +113,50 @@ def test_atomic_write_leaves_no_tmp_file_behind(tmp_path: Path) -> None:
 
     leftovers = list(store.jobs_dir.rglob("*.tmp-*"))
     assert leftovers == []
+
+
+def test_job_paths_reject_traversal_and_external_symlinks(tmp_path: Path) -> None:
+    import pytest
+
+    from sap_incident_lab.errors import ToolError
+
+    store = JobStore(tmp_path / "output")
+    for job_id in ("../escape", "/tmp/escape", r"..\escape", "C:escape", ""):
+        with pytest.raises(ToolError):
+            store.load(job_id)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (store.jobs_dir / "linked").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ToolError):
+        store.load("linked")
+
+
+def test_job_metadata_symlink_cannot_read_outside_output(tmp_path: Path) -> None:
+    import pytest
+
+    from sap_incident_lab.errors import ToolError
+
+    store = JobStore(tmp_path / "output")
+    job = _job("test-job")
+    store.create(job)
+    outside = tmp_path / "outside.json"
+    outside.write_text(job.model_dump_json())
+    metadata = store.jobs_dir / job.job_id / "job.json"
+    metadata.unlink()
+    metadata.symlink_to(outside)
+    with pytest.raises(ToolError):
+        store.load(job.job_id)
+
+
+def test_recovery_counts_unfinished_coverage(tmp_path: Path) -> None:
+    store = JobStore(tmp_path)
+    job = _job("test-job")
+    job.accepted_chunk_ids = ["f01:1-2", "f01:3-4", "f01:5-6"]
+    job.processed_chunk_ids = ["f01:1-2"]
+    job.skipped_chunk_ids = ["f01:3-4"]
+    job.unprocessed_chunk_ids = ["f01:7-8"]
+    store.create(job)
+    store.recover_interrupted_jobs()
+    recovered = store.load(job.job_id)
+    assert recovered is not None
+    assert recovered.unprocessed_chunk_ids == ["f01:5-6", "f01:7-8"]

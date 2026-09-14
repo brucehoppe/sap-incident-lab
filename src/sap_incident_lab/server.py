@@ -278,11 +278,20 @@ def build_server() -> ServerBundle:
         if live_job_id is not None:
             raise errors.job_busy(live_job_id)
 
-        range_requests = (
-            [RangeRequest(r["file_id"], int(r["start_line"]), int(r["end_line"])) for r in ranges]
-            if ranges is not None
-            else None
-        )
+        range_requests = None
+        if ranges is not None:
+            range_requests = []
+            for r in ranges:
+                if (
+                    not isinstance(r.get("file_id"), str)
+                    or type(r.get("start_line")) is not int
+                    or type(r.get("end_line")) is not int
+                ):
+                    raise errors.ToolError(
+                        "RANGE_INVALID", "Each range needs a file_id and integer line bounds.",
+                        "Supply file_id, start_line, and end_line for each range.",
+                    )
+                range_requests.append(RangeRequest(r["file_id"], r["start_line"], r["end_line"]))
         chunks, file_hashes = plan_chunks(settings, incident_id, file_ids, range_requests)
 
         accepted = chunks[: settings.max_chunks_per_job]
@@ -336,6 +345,8 @@ def build_server() -> ServerBundle:
         if job is None:
             raise errors.job_not_found(job_id)
 
+        if cursor < 0:
+            raise errors.ToolError("CURSOR_INVALID", "Cursor must be non-negative.", "Use cursor 0 or the returned next_cursor.")
         all_results = store.list_chunk_results(job_id)
         page = all_results[cursor : cursor + MAX_ANALYSIS_PAGE]
         next_cursor = (
@@ -400,8 +411,14 @@ def build_server() -> ServerBundle:
     ) -> dict[str, Any]:
         store = _get_job_store(settings)
         for job_id in job_ids:
-            if store.load(job_id) is None:
+            job = store.load(job_id)
+            if job is None:
                 raise errors.job_not_found(job_id)
+            if job.incident_id != incident_id:
+                raise errors.ToolError(
+                    "JOB_INCIDENT_MISMATCH", "The job belongs to a different incident.",
+                    "Use only job IDs from the report incident.",
+                )
         return save_report(settings, incident_id, job_ids, markdown)
 
     return ServerBundle(server=server, settings=settings)

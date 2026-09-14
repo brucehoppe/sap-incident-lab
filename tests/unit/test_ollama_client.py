@@ -143,3 +143,15 @@ async def test_no_repair_attempted_on_truncated_output(monkeypatch: pytest.Monke
     assert calls == 1
     assert repaired is False
     assert result.status == "truncated_output"
+
+
+@pytest.mark.parametrize("body", [b"not JSON", b"null", b"[]", b'{"message": null}', b'{"message": {"content": 123}}'])
+async def test_malformed_response_envelopes_are_invalid_output(monkeypatch, body) -> None:
+    settings = _settings_with_transport(
+        monkeypatch, lambda request: httpx.Response(200, content=body)
+    )
+    result, repaired = await extract_with_repair(
+        settings, question="q", file_id="f01", start_line=1, end_line=1, lines=["a"]
+    )
+    assert result.status == "invalid_output"
+    assert repaired

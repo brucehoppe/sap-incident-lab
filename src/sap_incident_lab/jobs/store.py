@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from .. import errors
 from ..analysis.schemas import PROMPT_VERSION, ChunkOutcome
 
 JobState = Literal[
@@ -68,17 +70,28 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
 
 class JobStore:
     def __init__(self, output_root: Path) -> None:
-        self.jobs_dir = output_root / "jobs"
+        self.output_root = output_root.resolve()
+        self.jobs_dir = self._contained(output_root / "jobs")
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
 
+    def _contained(self, path: Path) -> Path:
+        if not path.resolve().is_relative_to(self.output_root):
+            raise errors.path_rejected("job storage")
+        return path
+
     def _job_dir(self, job_id: str) -> Path:
-        return self.jobs_dir / job_id
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", job_id):
+            raise errors.job_not_found(job_id)
+        path = self.jobs_dir / job_id
+        if not path.resolve().is_relative_to(self.jobs_dir.resolve()):
+            raise errors.path_rejected(job_id)
+        return path
 
     def _job_path(self, job_id: str) -> Path:
-        return self._job_dir(job_id) / "job.json"
+        return self._contained(self._job_dir(job_id) / "job.json")
 
     def _chunks_dir(self, job_id: str) -> Path:
-        return self._job_dir(job_id) / "chunks"
+        return self._contained(self._job_dir(job_id) / "chunks")
 
     def create(self, job: JobRecord) -> None:
         self._job_dir(job.job_id).mkdir(parents=True, exist_ok=True)
@@ -95,8 +108,10 @@ class JobStore:
         return JobRecord.model_validate_json(path.read_text(encoding="utf-8"))
 
     def save_chunk_result(self, job_id: str, outcome: ChunkOutcome) -> None:
+        if not re.fullmatch(r"[A-Za-z0-9_-]+:[0-9]+-[0-9]+", outcome.chunk_id):
+            raise errors.path_rejected("chunk")
         safe_name = outcome.chunk_id.replace("/", "_").replace(":", "_")
-        path = self._chunks_dir(job_id) / f"{safe_name}.json"
+        path = self._contained(self._chunks_dir(job_id) / f"{safe_name}.json")
         _atomic_write_json(path, outcome.model_dump())
 
     def list_chunk_results(self, job_id: str) -> list[ChunkOutcome]:
@@ -104,7 +119,7 @@ class JobStore:
         if not chunks_dir.is_dir():
             return []
         results = [
-            ChunkOutcome.model_validate_json(p.read_text(encoding="utf-8"))
+            ChunkOutcome.model_validate_json(self._contained(p).read_text(encoding="utf-8"))
             for p in sorted(chunks_dir.glob("*.json"))
         ]
         results.sort(key=lambda c: (c.file_id, c.start_line))
@@ -125,6 +140,10 @@ class JobStore:
             job = self.load(job_id)
             if job is None or job.state not in _LIVE_STATES:
                 continue
+            job.unprocessed_chunk_ids = sorted(
+                set(job.unprocessed_chunk_ids)
+                | (set(job.accepted_chunk_ids) - set(job.processed_chunk_ids) - set(job.skipped_chunk_ids))
+            )
             job.state = "interrupted"
             job.ended_at = now_iso()
             self.save(job)

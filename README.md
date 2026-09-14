@@ -8,7 +8,7 @@ for the original planning document it corrects.
 
 ## Status
 
-Milestones 0–4 are done: all seven tool contracts work end-to-end against a
+Milestones 0–4 are done: all eight tool contracts work end-to-end against a
 synthetic incident, including one live run through a real `qwen3:8b` model.
 See [`DESIGN.md`](DESIGN.md) section 12 for the milestone table.
 
@@ -19,7 +19,7 @@ See [`DESIGN.md`](DESIGN.md) section 12 for the milestone table.
   — bounded, chunked Qwen extraction as an async job, with restart recovery
 - `incident_lab_save_report` — versioned, Claude-authored Markdown reports
 
-99 tests pass (`uv run pytest`); ruff and `mypy --strict` are clean.
+115 tests pass, with 3 Windows-specific tests skipped on macOS (`uv run pytest`); ruff and `mypy --strict` are clean.
 
 With no resolved incident available, milestones 5–6 became a 4-case synthetic
 portfolio instead (`tests/fixtures/INC-SYN-00{1,2,3,4}`) covering distinct

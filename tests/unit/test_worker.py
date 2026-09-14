@@ -163,6 +163,7 @@ async def test_all_invalid_output_marks_job_failed(
     finished = store.load(job.job_id)
     assert finished is not None
     assert finished.state == "failed"
+    assert set(finished.unprocessed_chunk_ids) == set(job.accepted_chunk_ids)
     results = store.list_chunk_results(job.job_id)
     assert all(r.status == "invalid_output" for r in results)
     # a repair attempt was made and still failed, and that is recorded

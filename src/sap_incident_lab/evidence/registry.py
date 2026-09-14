@@ -49,8 +49,8 @@ def list_incidents(settings: Settings) -> list[str]:
         if not entry.is_dir() or not (entry / "incident.json").is_file():
             continue
         try:
-            manifest = load_manifest(entry)
-        except ManifestError:
+            _incident_dir, manifest = _load_manifest_for(settings, entry.name)
+        except errors.ToolError:
             continue
         if manifest.incident_id == entry.name:
             found.append(entry.name)
@@ -99,7 +99,11 @@ def _read_one(
     # One read of the raw bytes: the hash and the decoded text always agree,
     # with no reopen between them for the file to change under (DESIGN.md
     # section 7, "compute SHA-256 from raw bytes ... no check-then-reopen").
-    raw = resolved.read_bytes()
+    with resolved.open("rb") as source:
+        raw = source.read(max_bytes + 1)
+    if len(raw) > max_bytes:
+        raise errors.file_too_large(file_id, settings.max_file_mb)
+    size_bytes = len(raw)
     sha256 = hashlib.sha256(raw).hexdigest()
 
     # utf-8-sig strips a BOM if present and is otherwise identical to utf-8,

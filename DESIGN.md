@@ -108,7 +108,7 @@ sap-incident-lab/             # github.com/bruce-hoppe_uoft/sap-incident-lab
 ├── AGENTS.md                 # agent guidance (points at DESIGN.md + secure defaults)
 ├── DESIGN.md                 # this file
 ├── docs/implementation-guide.md
-├── prompts/extract-v1.txt
+├── src/sap_incident_lab/prompts/extract-v1.txt
 ├── src/sap_incident_lab/
 │   ├── __main__.py           # CLI: `serve`, later `probe` (Ollama smoke test)
 │   ├── config.py             # Settings (pydantic-settings)
@@ -237,7 +237,7 @@ Both line and char limits apply; overlap as configured. A single line over the c
 that chunk `oversize` and it is **reported as skipped**, not truncated.
 
 ### Prompt
-`prompts/extract-v1.txt` is the **system** message (guide §9.2 text). The excerpt goes in the
+`src/sap_incident_lab/prompts/extract-v1.txt` is the **system** message (guide §9.2 text). The excerpt goes in the
 **user** message inside explicit delimiters, labelled untrusted. Prompt version is recorded.
 Ollama call: `/api/chat`, `stream:false`, `think:false`, `temperature:0`, `format=<JSON schema>`.
 
@@ -368,7 +368,7 @@ to drop anything in this run, meaning the model stayed inside the evidence it wa
 empty every single time — not "wrong," but never populated at all, even when the observations
 already contained everything needed to state the obvious explanation. `search_terms` fired in
 2 of 8 chunks; `missing_information` fired in most. The likely cause is the prompt
-(`prompts/extract-v1.txt`): it tells the model to "separate observations from possible
+(`src/sap_incident_lab/prompts/extract-v1.txt`): it tells the model to "separate observations from possible
 explanations" but never explicitly instructs it to attempt one, and `think: false` (chosen for
 latency) may be removing exactly the reasoning step hypothesis synthesis needs. This is left
 as an honest, measured finding rather than quietly patched — fixing it would mean either a

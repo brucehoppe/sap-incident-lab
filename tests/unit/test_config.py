@@ -45,3 +45,20 @@ def test_evidence_config_valid(tmp_path: Path) -> None:
 def test_evidence_config_error_when_root_is_relative() -> None:
     settings = Settings(root=Path("relative/incidents"), output=Path("/tmp/out"))
     assert "absolute" in (settings.evidence_config_error() or "")
+
+
+def test_nonexistent_output_under_symlinked_root_is_rejected(tmp_path: Path) -> None:
+    root = tmp_path / "incidents"
+    root.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(root, target_is_directory=True)
+    settings = Settings(root=root, output=alias / "new-output")
+    assert "must not contain" in (settings.evidence_config_error() or "")
+
+
+def test_output_must_be_a_directory(tmp_path: Path) -> None:
+    root = tmp_path / "incidents"
+    root.mkdir()
+    output = tmp_path / "output"
+    output.write_text("x")
+    assert Settings(root=root, output=output).evidence_config_error() is not None
