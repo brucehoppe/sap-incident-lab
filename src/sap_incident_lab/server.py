@@ -21,9 +21,15 @@ from .analysis.workflow import create_analysis, progress, resume_analysis
 from .config import Settings, get_settings
 from .diagnostics import ollama_health as _ollama_health
 from .errors import ToolError
-from .evidence.registry import describe_files, list_incidents, load_files, read_evidence_window
+from .evidence.registry import (
+    describe_files,
+    list_incidents,
+    load_files,
+    read_evidence_window,
+    search_evidence,
+)
 from .jobs.store import JobRecord, JobStore
-from .reporting import report_template, save_report
+from .reporting import list_reports, report_template, save_report
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -295,6 +301,28 @@ def build_server() -> ServerBundle:
             settings, incident_id, file_id, start_line, end_line, expected_sha256
         )
 
+    @server.tool(description="Search registered incident evidence for a literal term and return bounded, exact numbered lines with file hashes suitable for citation.")
+    @audited("incident_lab_search_evidence")
+    async def incident_lab_search_evidence(
+        incident_id: str,
+        query: str,
+        file_ids: list[str] | None = None,
+        case_sensitive: bool = False,
+        max_results: int = 50,
+    ) -> dict[str, Any]:
+        return search_evidence(settings, incident_id, query, file_ids, case_sensitive, max_results)
+
+    @server.tool(description="List persisted analysis jobs, newest first, optionally limited to one incident. Useful for resuming work and selecting report jobs.")
+    @audited("incident_lab_list_analysis_jobs")
+    async def incident_lab_list_analysis_jobs(incident_id: str | None = None) -> dict[str, Any]:
+        store = _get_job_store(settings)
+        jobs = store.list_jobs(incident_id)
+        return {"jobs": [{
+            "job_id": job.job_id, "incident_id": job.incident_id, "question": job.question,
+            "state": job.state, "created_at": job.created_at, "ended_at": job.ended_at,
+            "progress": progress(store, job),
+        } for job in jobs]}
+
     @server.tool(
         description=(
             "Start a bounded local Qwen analysis over one or more registered evidence "
@@ -427,5 +455,10 @@ def build_server() -> ServerBundle:
                     "Use only job IDs from the report incident.",
                 )
         return save_report(settings, incident_id, job_ids, markdown)
+
+    @server.tool(description="List saved Markdown reports for an incident, newest first. Returns metadata only and never accepts a caller-supplied path.")
+    @audited("incident_lab_list_reports")
+    async def incident_lab_list_reports(incident_id: str) -> dict[str, Any]:
+        return list_reports(settings, incident_id)
 
     return ServerBundle(server=server, settings=settings)

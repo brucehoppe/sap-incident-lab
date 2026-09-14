@@ -141,6 +141,14 @@ class JobStore:
             return []
         return sorted(p.name for p in self.jobs_dir.iterdir() if p.is_dir())
 
+    def list_jobs(self, incident_id: str | None = None) -> list[JobRecord]:
+        jobs: list[JobRecord] = []
+        for job_id in self.list_job_ids():
+            job = self.load(job_id)
+            if job is not None and (incident_id is None or job.incident_id == incident_id):
+                jobs.append(job)
+        return sorted(jobs, key=lambda job: job.created_at, reverse=True)
+
     def recover_interrupted_jobs(self) -> list[str]:
         """Mark every job left in a 'live' state as interrupted. Called once
         at server startup, before any tool can create a new job, so a stale

@@ -79,37 +79,57 @@ def report_template(settings: Settings, incident_id: str, job_ids: list[str]) ->
     # Deliberately leave conclusions blank; a template cannot verify model claims.
     lines = [
         f"# Incident report: {incident_id}", "",
-        "Draft analysis. Claims and citations require human review.", "",
-        "## Summary", "", "[Describe the incident and impact; distinguish facts from inference.]", "",
+        "Draft; keep this report concise. Claims and citations require human review.", "",
+        "## Summary", "", "[Impact and one-sentence incident summary. Separate facts from inference.]", "",
         "## Scope and coverage", "",
     ]
     if not jobs:
         lines.append("No analysis jobs selected; analysis coverage has not been established.")
     for job in jobs:
         detail = progress(store, job)
-        lines.append(f"- Job {job.job_id} ({job.state}): {detail['summary']}")
-        lines.append(f"  Model: {job.model}; prompt: {job.prompt_version}; attempts: {job.attempts}.")
+        lines.append(f"- {job.job_id} ({job.state}): {detail['summary']} Model {job.model}; attempt {job.attempts}.")
         for file_id, sha256 in job.file_hashes.items():
             current = next((r.sha256 for r in records if r.file_id == file_id), None)
             if current != sha256:
                 lines.append(f"  SOURCE CHANGED: {file_id}; job hash {sha256}. Reinvestigate before citing current lines.")
-    lines += ["", "Coverage is per job; overlapping jobs must not be added together.",
-              "Completed extraction does not establish a verified root cause.", "",
+    lines += ["", "Coverage is per job; do not add overlapping jobs. Extraction is not a verified root cause.", "",
               "## Evidence inventory", ""]
     for record in records:
         name = record.rel_path.replace("\n", " ").replace("\r", " ").replace("`", "'")
-        lines.append(f"- {record.file_id}: {name}; {record.line_count} lines; SHA-256 {record.sha256}.")
+        lines.append(f"- {record.file_id} {name} ({record.line_count} lines; SHA-256 {record.sha256}).")
     lines += [
         "", "## Findings and evidence", "",
-        "[For each finding, cite file ID, exact line range and SHA-256 returned by incident_lab_get_evidence.]",
+        "[Use short bullets. Cite file ID, exact line range and SHA-256 from incident_lab_get_evidence.]",
         "", "## Hypotheses", "",
-        "[For each hypothesis, list supporting evidence, contradicting evidence and a discriminating check.]",
+        "[List only the top hypotheses, each with supporting evidence and one discriminating check.]",
         "", "## Missing information", "",
-        "[Record unknown system facts, export timezone and gaps in evidence.]",
-        f"Declared SID: {manifest.system.sid or 'unknown'}. Declared timezone: {manifest.time_window.timezone or 'unknown'}.",
-        "", "## Next checks", "", "[Prioritized checks, owner and expected outcome.]",
+        f"[Key gaps only.] SID: {manifest.system.sid or 'unknown'}; timezone: {manifest.time_window.timezone or 'unknown'}.",
+        "", "## Next checks", "", "[Prioritized checks only; include owner/outcome when useful.]",
         "", "## Limitations", "",
-        "[Disclose failed, pending and skipped chunks; unverified claims; and any changed sources.]", "",
+        "[State failed, pending, skipped, changed-source, and unverified items in one short bullet list.]", "",
     ]
     return {"incident_id": incident_id, "job_ids": list(dict.fromkeys(job_ids)),
             "markdown": "\n".join(lines), "mechanically_verified": False}
+
+
+def list_reports(settings: Settings, incident_id: str) -> dict[str, Any]:
+    """List saved reports without exposing arbitrary filesystem paths."""
+    if settings.evidence_config_error():
+        raise errors.config_invalid(settings.evidence_config_error() or "invalid configuration")
+    if not _INCIDENT_ID_RE.fullmatch(incident_id):
+        raise errors.incident_not_found(incident_id)
+    assert settings.output is not None
+    reports_dir = settings.output / "reports" / incident_id
+    if not reports_dir.resolve().is_relative_to(settings.output.resolve()):
+        raise errors.path_rejected(incident_id)
+    reports = []
+    if reports_dir.is_dir():
+        for path in sorted(reports_dir.glob("report-*.md"), reverse=True):
+            if path.is_file():
+                reports.append({
+                    "filename": path.name,
+                    "path": str(path.relative_to(settings.output)),
+                    "size_bytes": path.stat().st_size,
+                    "modified_at": datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(),
+                })
+    return {"incident_id": incident_id, "reports": reports}

@@ -6,7 +6,7 @@ import pytest
 
 from sap_incident_lab import errors
 from sap_incident_lab.config import Settings
-from sap_incident_lab.reporting import save_report
+from sap_incident_lab.reporting import list_reports, save_report
 
 
 def test_save_report_writes_a_markdown_file_under_output(synthetic_incident: Settings) -> None:
@@ -55,3 +55,11 @@ def test_report_directory_cannot_escape_through_symlink(synthetic_incident: Sett
     with pytest.raises(errors.ToolError):
         save_report(synthetic_incident, "INC-SYN-001", [], "must not escape")
     assert list(outside.iterdir()) == []
+
+
+def test_list_reports_returns_metadata_only(synthetic_incident: Settings) -> None:
+    saved = save_report(synthetic_incident, "INC-SYN-001", [], "report body")
+    result = list_reports(synthetic_incident, "INC-SYN-001")
+    assert result["reports"][0]["path"] == saved["path"]
+    assert result["reports"][0]["size_bytes"] > 0
+    assert "report body" not in result["reports"][0]

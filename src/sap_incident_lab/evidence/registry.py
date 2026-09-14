@@ -217,3 +217,53 @@ def read_evidence_window(
         "clipped": clipped,
         "next_start_line": next_start_line,
     }
+
+
+def search_evidence(
+    settings: Settings,
+    incident_id: str,
+    query: str,
+    file_ids: list[str] | None = None,
+    case_sensitive: bool = False,
+    max_results: int = 50,
+) -> dict[str, Any]:
+    """Find literal text in registered evidence and return citation-ready lines."""
+    if not query.strip() or len(query) > 2000:
+        raise errors.ToolError(
+            "QUERY_INVALID", "Provide a search query of 1–2000 characters.",
+            "Supply a focused literal term or phrase.",
+        )
+    if max_results < 1 or max_results > 100:
+        raise errors.ToolError(
+            "LIMIT_INVALID", "max_results must be between 1 and 100.",
+            "Use a smaller result limit and refine the query if needed.",
+        )
+    _manifest, records = load_files(settings, incident_id)
+    selected = records if file_ids is None else [r for r in records if r.file_id in file_ids]
+    unknown = sorted(set(file_ids or []) - {r.file_id for r in records})
+    if unknown:
+        raise errors.file_not_found(incident_id, unknown[0])
+    needle = query if case_sensitive else query.casefold()
+    matches: list[dict[str, Any]] = []
+    for record in selected:
+        for line_number, text in enumerate(record.lines, start=1):
+            haystack = text if case_sensitive else text.casefold()
+            if needle in haystack:
+                matches.append({
+                    "file_id": record.file_id,
+                    "path": record.rel_path,
+                    "line": line_number,
+                    "text": text,
+                    "sha256": record.sha256,
+                })
+                if len(matches) >= max_results:
+                    return {
+                        "incident_id": incident_id, "query": query,
+                        "case_sensitive": case_sensitive, "matches": matches,
+                        "truncated": True, "next_step": "Refine the query or pass a higher max_results.",
+                    }
+    return {
+        "incident_id": incident_id, "query": query,
+        "case_sensitive": case_sensitive, "matches": matches,
+        "truncated": False,
+    }

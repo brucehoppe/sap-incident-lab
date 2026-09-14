@@ -13,6 +13,7 @@ from sap_incident_lab.evidence.registry import (
     list_incidents,
     load_files,
     read_evidence_window,
+    search_evidence,
 )
 
 
@@ -159,6 +160,20 @@ def test_read_evidence_window_clips_and_reports_next_start(
     assert result["clipped"] is True
     assert result["next_start_line"] == 2
     assert len(result["lines"]) == 1
+
+
+def test_search_evidence_returns_exact_citation_lines(synthetic_incident: Settings) -> None:
+    result = search_evidence(synthetic_incident, "INC-SYN-001", "ALREADY HELD")
+    assert result["truncated"] is False
+    assert result["matches"][0]["file_id"] == "f02"
+    assert result["matches"][0]["line"] == 3
+    assert len(result["matches"][0]["sha256"]) == 64
+
+
+def test_search_evidence_rejects_empty_query(synthetic_incident: Settings) -> None:
+    with pytest.raises(errors.ToolError) as excinfo:
+        search_evidence(synthetic_incident, "INC-SYN-001", " ")
+    assert excinfo.value.code == "QUERY_INVALID"
 
 
 def test_list_incidents_finds_the_full_portfolio(

@@ -35,8 +35,11 @@ configuration. Setup backs up existing configuration and preserves other servers
 - `incident_lab_report_template`, `incident_lab_save_report` — consistent report
   scaffolds and versioned Markdown.
 - `incident_lab_list_incidents`, `incident_lab_list_files`,
-  `incident_lab_get_evidence`, `incident_lab_start_analysis` — detailed inventory,
-  exact source lines, and targeted analysis.
+  `incident_lab_get_evidence`, `incident_lab_search_evidence`,
+  `incident_lab_start_analysis` — detailed inventory, exact source lines, searchable
+  evidence, and targeted analysis.
+- `incident_lab_list_analysis_jobs` — persisted job history and resumable progress.
+- `incident_lab_list_reports` — saved report metadata for an incident.
 
 Resume preserves successful chunks and checks source hashes before continuing.
 Coverage is explicit; partial extraction is never a complete incident review.

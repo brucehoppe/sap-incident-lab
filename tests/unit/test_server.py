@@ -59,6 +59,14 @@ async def test_server_registers_health_tool() -> None:
 
 
 @pytest.mark.asyncio
+async def test_server_registers_new_investigation_tools() -> None:
+    bundle = build_server()
+    tools = await bundle.server.list_tools()
+    names = {t.name for t in tools}
+    assert {"incident_lab_search_evidence", "incident_lab_list_analysis_jobs", "incident_lab_list_reports"} <= names
+
+
+@pytest.mark.asyncio
 async def test_evidence_tools_round_trip_through_the_client(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
