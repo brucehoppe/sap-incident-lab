@@ -157,7 +157,7 @@ async def _run_job(
             status=result.status,
             extraction=extraction,
             invalid_refs_dropped=dropped,
-            model=settings.model,
+            model=result.model_used or settings.model,
             elapsed_seconds=result.elapsed_seconds,
             repair_attempted=repaired,
         )

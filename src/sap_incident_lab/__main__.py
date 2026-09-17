@@ -49,6 +49,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     setup_parser = subparsers.add_parser("setup", help="Create folders and register Claude Desktop")
     setup_parser.add_argument("--data-dir", type=Path)
     setup_parser.add_argument("--model")
+    setup_parser.add_argument("--fallback-model")
     setup_parser.add_argument("--desktop-config", type=Path)
     setup_parser.add_argument("--no-desktop", action="store_true")
     setup_parser.add_argument(
@@ -56,6 +57,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         action="store_true",
         help="Download the selected model using installed Ollama.",
     )
+    benchmark_parser = subparsers.add_parser("benchmark", help="Compare Ollama models with a bounded extraction probe")
+    benchmark_parser.add_argument("--models", nargs="+", help="Ollama model tags; defaults to the configured model")
+    benchmark_parser.add_argument("--repeats", type=int, choices=range(1, 4), default=1)
+    benchmark_parser.add_argument("--json", action="store_true")
     setup_parser.add_argument(
         "--interactive", action="store_true", help="Prompt for data folder and model."
     )
@@ -104,6 +109,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             result = setup(
                 data_dir=args.data_dir,
                 model=args.model,
+                fallback_model=args.fallback_model,
                 desktop_config=args.desktop_config,
                 register_desktop=not args.no_desktop,
             )
@@ -130,6 +136,11 @@ def main(argv: Sequence[str] | None = None) -> None:
             _print_result(result, args.json)
             if not result["ready"]:
                 raise SystemExit(1)
+        elif args.command == "benchmark":
+            from .benchmark import benchmark_models
+
+            result = asyncio.run(benchmark_models(settings, args.models or [settings.model], args.repeats))
+            _print_result(result, args.json)
         elif args.command == "import":
             from .onboarding import import_incident
 

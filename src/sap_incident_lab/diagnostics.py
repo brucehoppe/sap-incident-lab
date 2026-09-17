@@ -29,6 +29,10 @@ async def ollama_health(settings: Settings) -> dict[str, Any]:
             "ollama_reachable": True,
             "configured_model": settings.model,
             "model_installed": installed,
+            "fallback_model": settings.fallback_model,
+            "fallback_model_installed": (
+                None if not settings.fallback_model else _model_installed(settings.fallback_model, names)
+            ),
             "next_step": None
             if installed
             else f"Run ollama pull {settings.model}, then run doctor again.",
@@ -38,9 +42,15 @@ async def ollama_health(settings: Settings) -> dict[str, Any]:
             "ollama_reachable": False,
             "configured_model": settings.model,
             "model_installed": False,
+            "fallback_model": settings.fallback_model,
+            "fallback_model_installed": False if settings.fallback_model else None,
             "error_type": type(exc).__name__,
             "next_step": "Start Ollama, then run sap-incident-lab doctor again.",
         }
+
+
+def _model_installed(model: str, names: list[str]) -> bool:
+    return model in names or (":" not in model and model + ":latest" in names)
 
 
 async def doctor(settings: Settings, *, extraction: bool = True) -> dict[str, Any]:

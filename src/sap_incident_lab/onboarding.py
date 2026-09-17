@@ -46,6 +46,7 @@ def setup(
     *,
     data_dir: Path | None = None,
     model: str | None = None,
+    fallback_model: str | None = None,
     desktop_config: Path | None = None,
     register_desktop: bool = True,
 ) -> dict[str, Any]:
@@ -62,6 +63,8 @@ def setup(
         values.update(root=str(base / "incidents"), output=str(base / "outputs"))
     if model is not None or "model" not in values:
         values["model"] = model or "qwen3.5:9b"
+    if fallback_model is not None:
+        values["fallback_model"] = fallback_model
     settings = Settings(**values)
     assert settings.root is not None and settings.output is not None
     # Validate overlap before making directories.
@@ -93,6 +96,7 @@ def setup(
                 "INCIDENT_LAB_ROOT": str(root),
                 "INCIDENT_LAB_OUTPUT": str(output),
                 "INCIDENT_LAB_MODEL": settings.model,
+                **({"INCIDENT_LAB_FALLBACK_MODEL": settings.fallback_model} if settings.fallback_model else {}),
             },
         }
         write_json(target, config)
@@ -101,6 +105,7 @@ def setup(
         "root": str(root),
         "output": str(output),
         "model": settings.model,
+        "fallback_model": settings.fallback_model,
         "desktop_config": str(target) if target else None,
         "next_steps": [
             "Run sap-incident-lab doctor.",

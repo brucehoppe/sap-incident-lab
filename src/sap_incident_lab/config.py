@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # appropriate to the host (for example qwen3.8 on a 32 GB Windows host or
     # qwen3.5:9b on a 24 GB Mac) without a code change.
     model: str = Field(default="qwen3.5:9b", min_length=1)
+    fallback_model: str | None = Field(default=None, min_length=1)
     ollama_url: str = "http://127.0.0.1:11434"
 
     num_ctx: int = Field(default=8192, ge=2048, le=32768)
@@ -72,6 +73,12 @@ class Settings(BaseSettings):
     def _overlap_less_than_lines(self) -> Settings:
         if self.chunk_overlap_lines >= self.max_chunk_lines:
             raise ValueError("chunk_overlap_lines must be smaller than max_chunk_lines")
+        return self
+
+    @model_validator(mode="after")
+    def _fallback_differs_from_primary(self) -> Settings:
+        if self.fallback_model == self.model:
+            raise ValueError("fallback_model must differ from model")
         return self
 
     def evidence_config_error(self) -> str | None:

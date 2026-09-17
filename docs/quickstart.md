@@ -35,6 +35,19 @@ uv run sap-incident-lab setup --interactive --pull-model
 
 Defaults are `~/SAPIncidentLabData/incidents`, `~/SAPIncidentLabData/outputs`, and `qwen3.5:9b`. Use `setup --data-dir PATH --model NAME` to select any installed Ollama tag. `setup --no-desktop` configures command-line use without Desktop registration.
 
+You can configure a fallback model for missing primary tags:
+
+```sh
+uv run sap-incident-lab setup --model qwen3.5:9b --fallback-model qwen3:8b --pull-model
+```
+
+Fallback is used only when Ollama reports that the primary model is missing;
+the actual model used is recorded in each chunk result. Compare models with:
+
+```sh
+uv run sap-incident-lab benchmark --models qwen3.5:9b qwen3:8b --json
+```
+
 Setup stores configuration at `~/.config/sap-incident-lab/config.json`. Environment variables and local dotenv settings override saved defaults. Use the global `--config PATH` option before any command to keep an independent installation, or set `INCIDENT_LAB_CONFIG`.
 
 Existing configuration is backed up before replacement. Other Desktop servers and existing evidence are preserved. Rerunning setup without folder/model arguments retains the saved choices. The Desktop entry uses this installation's absolute Python executable; rerun setup if you move or recreate the installation.

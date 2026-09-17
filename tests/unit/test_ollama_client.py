@@ -86,6 +86,29 @@ async def test_unreachable_ollama_raises_tool_error(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
+async def test_missing_primary_uses_configured_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model"]
+        calls.append(model)
+        if model == "primary":
+            return httpx.Response(404, json={"error": "model not found"})
+        return httpx.Response(200, json=VALID_BODY)
+
+    settings = _settings_with_transport(monkeypatch, handler).model_copy(
+        update={"model": "primary", "fallback_model": "fallback"}
+    )
+    result, repaired = await extract_with_repair(
+        settings, question="q", file_id="f01", start_line=1, end_line=1, lines=["a"]
+    )
+    assert calls == ["primary", "fallback"]
+    assert result.status == "completed"
+    assert result.model_used == "fallback"
+    assert repaired is False
+
+
+@pytest.mark.asyncio
 async def test_repair_is_attempted_exactly_once_on_invalid_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
