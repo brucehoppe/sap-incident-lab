@@ -13,7 +13,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from .config import get_settings
+from . import __version__
+from .config import config_path, get_settings
 from .errors import ToolError
 from .evidence.paths import PathRejected
 from .logging_config import configure_logging
@@ -44,6 +45,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         description="Set up once, import exported logs, then investigate them in Claude.",
     )
     parser.add_argument("--config", type=Path, help="Use a separate saved configuration file.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("serve", help="Run the stdio MCP server")
     setup_parser = subparsers.add_parser("setup", help="Create folders and register Claude Desktop")
@@ -61,6 +63,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     benchmark_parser.add_argument("--models", nargs="+", help="Ollama model tags; defaults to the configured model")
     benchmark_parser.add_argument("--repeats", type=int, choices=range(1, 4), default=1)
     benchmark_parser.add_argument("--json", action="store_true")
+    benchmark_parser.add_argument("--output", type=Path, help="Also save the JSON benchmark result here.")
+    config_parser = subparsers.add_parser("config", help="Inspect or validate effective configuration")
+    config_subparsers = config_parser.add_subparsers(dest="config_action", required=True)
+    config_show = config_subparsers.add_parser("show")
+    config_show.add_argument("--json", action="store_true")
+    config_subparsers.add_parser("validate")
     setup_parser.add_argument(
         "--interactive", action="store_true", help="Prompt for data folder and model."
     )
@@ -84,6 +92,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     importing.add_argument("--encoding", default="utf-8")
     importing.add_argument("--sid")
     importing.add_argument("--timezone", help="Declared export timezone; omitted means unknown.")
+    importing.add_argument("--classification", choices=("unclassified", "synthetic", "approved-real"), default="unclassified")
+    importing.add_argument("--acknowledge-sensitive-data", action="store_true", help="Required for approved-real imports.")
     importing.add_argument("--json", action="store_true")
     demo = subparsers.add_parser(
         "demo", help="Import bundled synthetic evidence and show a walkthrough"
@@ -120,10 +130,33 @@ def main(argv: Sequence[str] | None = None) -> None:
                     raise ValueError(
                         "Ollama is not installed. Install and start Ollama, then rerun setup --pull-model."
                     )
-                subprocess.run([ollama, "pull", result["model"]], check=True)
+                models = [result["model"]]
+                if result.get("fallback_model"):
+                    models.append(result["fallback_model"])
+                for selected_model in dict.fromkeys(models):
+                    subprocess.run([ollama, "pull", selected_model], check=True)
             _print_result(result, False)
             return
         settings = get_settings()
+        if args.command == "config":
+            safe = {
+                "config_path": str(config_path()),
+                "root": str(settings.root) if settings.root else None,
+                "output": str(settings.output) if settings.output else None,
+                "model": settings.model,
+                "fallback_model": settings.fallback_model,
+                "ollama_url": settings.ollama_url,
+                "num_ctx": settings.num_ctx,
+                "num_predict": settings.num_predict,
+            }
+            if args.config_action == "show":
+                _print_result(safe, args.json)
+            else:
+                reason = settings.evidence_config_error()
+                if reason:
+                    raise ValueError(reason)
+                print("Configuration is valid.")
+            return
         if args.command == "serve":
             from .server import build_server
 
@@ -140,10 +173,15 @@ def main(argv: Sequence[str] | None = None) -> None:
             from .benchmark import benchmark_models
 
             result = asyncio.run(benchmark_models(settings, args.models or [settings.model], args.repeats))
+            if args.output:
+                args.output.expanduser().resolve().write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+                result["output"] = str(args.output.expanduser().resolve())
             _print_result(result, args.json)
         elif args.command == "import":
             from .onboarding import import_incident
 
+            if args.classification == "approved-real" and not args.acknowledge_sensitive_data:
+                raise ValueError("approved-real imports require --acknowledge-sensitive-data after classification and retention review")
             result = import_incident(
                 settings,
                 args.incident_id,
@@ -152,6 +190,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 encoding=args.encoding,
                 sid=args.sid,
                 timezone=args.timezone,
+                classification=args.classification,
             )
             _print_result(result, args.json)
         elif args.command == "demo":

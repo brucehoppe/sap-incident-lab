@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import platform
+from datetime import UTC, datetime
+from importlib.metadata import version
 from typing import Any
 
 from .analysis.ollama_client import extract_once
@@ -26,4 +29,13 @@ async def benchmark_models(settings: Settings, models: list[str], repeats: int =
             "model": model, "runs": runs, "completed": len(completed),
             "average_seconds": round(sum(run["elapsed_seconds"] for run in completed) / len(completed), 3) if completed else None,
         })
-    return {"models": results, "repeats": repeats, "request": "structured extraction"}
+    return {
+        "app_version": version("sap-incident-lab"),
+        "created_at": datetime.now(UTC).isoformat(),
+        "platform": platform.platform(),
+        "context": settings.num_ctx,
+        "max_prediction": settings.num_predict,
+        "models": results,
+        "repeats": repeats,
+        "request": "structured extraction",
+    }

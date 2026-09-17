@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -36,6 +37,7 @@ class ManifestFileEntry(BaseModel):
 class IncidentManifest(BaseModel):
     incident_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")
     summary: str = ""
+    classification: Literal["unclassified", "synthetic", "approved-real"] = "unclassified"
     system: SystemFacts = Field(default_factory=SystemFacts)
     time_window: TimeWindow = Field(default_factory=TimeWindow)
     files: list[ManifestFileEntry] = Field(default_factory=list)

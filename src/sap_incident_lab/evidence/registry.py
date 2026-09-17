@@ -157,6 +157,7 @@ def describe_files(manifest: IncidentManifest, records: list[FileRecord]) -> dic
     return {
         "incident_id": manifest.incident_id,
         "summary": manifest.summary,
+        "classification": manifest.classification,
         "system": manifest.system.model_dump(),
         "time_window": manifest.time_window.model_dump(),
         "files": [

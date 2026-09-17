@@ -133,6 +133,7 @@ def import_incident(
     encoding: str = "utf-8",
     sid: str | None = None,
     timezone: str | None = None,
+    classification: str = "unclassified",
 ) -> dict[str, Any]:
     """Copy explicitly selected files; never scan directories or overwrite an incident."""
     if reason := settings.evidence_config_error():
@@ -161,6 +162,7 @@ def import_incident(
     manifest = IncidentManifest(
         incident_id=incident_id,
         summary=summary,
+        classification=classification,
         system=SystemFacts(sid=sid),
         time_window=TimeWindow(timezone=timezone),
         files=entries,
@@ -209,4 +211,5 @@ def install_demo(settings: Settings) -> dict[str, Any]:
             "INC-DEMO-001",
             [folder / "import-log.txt", folder / "workprocess-trace.txt"],
             summary="Synthetic demo: transport import stalls on a stale enqueue lock.",
+            classification="synthetic",
         )

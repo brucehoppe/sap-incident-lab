@@ -1,10 +1,10 @@
 # SAP Incident Lab
 
-A local, read-only MCP server that lets Claude Desktop investigate exported
-SAP incidents using a local Qwen model through Ollama, with every claim
-traceable back to exact source lines. See [`DESIGN.md`](DESIGN.md) for the
-architecture and [`docs/implementation-guide.md`](docs/implementation-guide.md)
-for the original planning document it corrects.
+A local, read-only MCP server that helps an approved AI client investigate
+exported SAP incidents using a local Ollama model. Evidence is bounded,
+hashed, line-addressable, and resumable; analyst reports remain explicitly
+unverified until their citations are reviewed. See [`SECURITY.md`](SECURITY.md)
+and [`docs/privacy.md`](docs/privacy.md) before using real incident data.
 
 ## Start here
 
@@ -16,6 +16,22 @@ uv sync --locked --extra dev
 uv run sap-incident-lab setup --pull-model
 uv run sap-incident-lab doctor
 uv run sap-incident-lab demo
+```
+
+The default model is `qwen3.5:9b`. Select a host-appropriate model and an
+optional missing-model fallback during setup:
+
+```sh
+uv run sap-incident-lab setup --model qwen3.5:9b --fallback-model qwen3:8b --pull-model
+uv run sap-incident-lab config show
+uv run sap-incident-lab doctor
+```
+
+Compare installed models with the same structured extraction contract used by
+analysis jobs:
+
+```sh
+uv run sap-incident-lab benchmark --models qwen3.5:9b qwen3.8 --repeats 2 --json
 ```
 
 Restart Claude Desktop, then ask:
@@ -56,6 +72,14 @@ Claude Desktop acceptance must be verified on the target machine.
 The original four-case synthetic portfolio and its live Qwen observations are
 documented in DESIGN.md. Real resolved-incident evaluation remains pending;
 publication remains a separate decision.
+
+## Release and safety documents
+
+- [`SECURITY.md`](SECURITY.md) — boundaries and vulnerability reporting.
+- [`docs/privacy.md`](docs/privacy.md) — evidence flow and operator obligations.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development and release checks.
+- [`CHANGELOG.md`](CHANGELOG.md) — user-visible changes.
+- [`docs/evaluation.md`](docs/evaluation.md) — accuracy and benchmark protocol.
 
 ## Setting up on Windows
 

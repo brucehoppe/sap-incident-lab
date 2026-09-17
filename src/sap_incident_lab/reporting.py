@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import UTC, datetime
+from importlib.metadata import version
 from typing import Any
 
 from . import errors
@@ -45,6 +46,7 @@ def save_report(
         f"<!-- incident_id: {incident_id} -->\n"
         f"<!-- job_ids: {', '.join(job_ids)} -->\n"
         f"<!-- saved_at: {saved_at.isoformat()} -->\n\n"
+        f"<!-- app_version: {version('sap-incident-lab')} -->\n\n"
     )
     with path.open("x", encoding="utf-8") as report:
         report.write(header + markdown)
@@ -87,11 +89,13 @@ def report_template(settings: Settings, incident_id: str, job_ids: list[str]) ->
         lines.append("No analysis jobs selected; analysis coverage has not been established.")
     for job in jobs:
         detail = progress(store, job)
-        lines.append(f"- {job.job_id} ({job.state}): {detail['summary']} Model {job.model}; attempt {job.attempts}.")
+        lines.append(f"- {job.job_id} ({job.state}): {detail['summary']} Primary model {job.model}; attempt {job.attempts}.")
         for file_id, sha256 in job.file_hashes.items():
             current = next((r.sha256 for r in records if r.file_id == file_id), None)
             if current != sha256:
                 lines.append(f"  SOURCE CHANGED: {file_id}; job hash {sha256}. Reinvestigate before citing current lines.")
+    lines += ["", f"Application version: {version('sap-incident-lab')}.",
+              f"Configured fallback model: {settings.fallback_model or 'none'}."]
     lines += ["", "Coverage is per job; do not add overlapping jobs. Extraction is not a verified root cause.", "",
               "## Evidence inventory", ""]
     for record in records:

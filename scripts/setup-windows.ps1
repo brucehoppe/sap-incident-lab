@@ -29,6 +29,10 @@
     Ollama model tag to pull. Default: qwen3.8. Pass another tag when the
     machine has less memory, for example qwen3.5:9b.
 
+.PARAMETER FallbackModel
+    Optional model tag to use if the primary model is missing. It is pulled
+    and recorded explicitly; default: none.
+
 .PARAMETER SkipTests
     Skip the `uv run pytest` verification step after installing dependencies.
 
@@ -43,6 +47,7 @@ param(
     [string]$InstallDir = (Join-Path $env:USERPROFILE 'sap-incident-lab'),
     [string]$DataDir = (Join-Path $env:USERPROFILE 'SAPIncidentLabData'),
     [string]$Model = 'qwen3.8',
+    [string]$FallbackModel = '',
     [switch]$SkipTests
 )
 
@@ -164,7 +169,9 @@ Write-Step "Creating data folders and registering Claude Desktop"
 
 Push-Location $InstallDir
 try {
-    uv run --locked sap-incident-lab setup --data-dir $DataDir --model $Model
+$setupArgs = @('--data-dir', $DataDir, '--model', $Model)
+if ($FallbackModel) { $setupArgs += @('--fallback-model', $FallbackModel) }
+uv run --locked sap-incident-lab setup @setupArgs --pull-model
     if ($LASTEXITCODE -ne 0) { throw "Application setup failed. See the recovery message above." }
 
     Write-Step "Checking folders, model, and a synthetic extraction"

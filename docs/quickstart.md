@@ -35,6 +35,11 @@ uv run sap-incident-lab setup --interactive --pull-model
 
 Defaults are `~/SAPIncidentLabData/incidents`, `~/SAPIncidentLabData/outputs`, and `qwen3.5:9b`. Use `setup --data-dir PATH --model NAME` to select any installed Ollama tag. `setup --no-desktop` configures command-line use without Desktop registration.
 
+Imports are `unclassified` by default. Use `--classification synthetic` for
+test material. Use `--classification approved-real --acknowledge-sensitive-data`
+only after classification, retention, and approved-client review; the importer
+does not redact sensitive values automatically.
+
 You can configure a fallback model for missing primary tags:
 
 ```sh

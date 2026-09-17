@@ -18,21 +18,21 @@ async def ollama_health(settings: Settings) -> dict[str, Any]:
             body = response.json()
         if not isinstance(body, dict) or not isinstance(body.get("models"), list):
             raise ValueError("Invalid model inventory")
-        names = [
-            item["name"]
-            for item in body["models"]
-            if isinstance(item, dict) and isinstance(item.get("name"), str)
-        ]
+        inventory = [item for item in body["models"] if isinstance(item, dict) and isinstance(item.get("name"), str)]
+        names = [item["name"] for item in inventory]
         model = settings.model if ":" in settings.model else settings.model + ":latest"
         installed = model in names or settings.model in names
+        primary = next((item for item in inventory if item["name"] in (model, settings.model)), {})
+        fallback_installed = bool(settings.fallback_model and _model_installed(settings.fallback_model, names))
+        fallback = next((item for item in inventory if item["name"] in (settings.fallback_model, f"{settings.fallback_model}:latest")), {}) if settings.fallback_model else {}
         return {
             "ollama_reachable": True,
             "configured_model": settings.model,
             "model_installed": installed,
+            "model_digest": primary.get("digest"),
             "fallback_model": settings.fallback_model,
-            "fallback_model_installed": (
-                None if not settings.fallback_model else _model_installed(settings.fallback_model, names)
-            ),
+            "fallback_model_installed": fallback_installed if settings.fallback_model else None,
+            "fallback_model_digest": fallback.get("digest") if settings.fallback_model else None,
             "next_step": None
             if installed
             else f"Run ollama pull {settings.model}, then run doctor again.",
