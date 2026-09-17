@@ -20,13 +20,20 @@ uv run sap-incident-lab setup --pull-model
 uv run sap-incident-lab doctor
 ```
 
+The default model is `qwen3.5:9b`, a practical choice for a 24 GB Mac. On a
+32 GB Windows machine, select the larger model explicitly:
+
+```powershell
+.\scripts\setup-windows.ps1 -Model qwen3.8
+```
+
 Ollama must be running before downloading or testing the model. To choose your folder and model interactively:
 
 ```sh
 uv run sap-incident-lab setup --interactive --pull-model
 ```
 
-Defaults are `~/SAPIncidentLabData/incidents`, `~/SAPIncidentLabData/outputs`, and `qwen3:8b`. Use `setup --data-dir PATH --model NAME` to override them. `setup --no-desktop` configures command-line use without Desktop registration.
+Defaults are `~/SAPIncidentLabData/incidents`, `~/SAPIncidentLabData/outputs`, and `qwen3.5:9b`. Use `setup --data-dir PATH --model NAME` to select any installed Ollama tag. `setup --no-desktop` configures command-line use without Desktop registration.
 
 Setup stores configuration at `~/.config/sap-incident-lab/config.json`. Environment variables and local dotenv settings override saved defaults. Use the global `--config PATH` option before any command to keep an independent installation, or set `INCIDENT_LAB_CONFIG`.
 

@@ -61,7 +61,7 @@ def setup(
         base = (data_dir or defaults).expanduser().resolve()
         values.update(root=str(base / "incidents"), output=str(base / "outputs"))
     if model is not None or "model" not in values:
-        values["model"] = model or "qwen3:8b"
+        values["model"] = model or "qwen3.5:9b"
     settings = Settings(**values)
     assert settings.root is not None and settings.output is not None
     # Validate overlap before making directories.

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Sets up SAP Incident Lab on a Windows machine: uv, Ollama + qwen3:8b, the
+    Sets up SAP Incident Lab on a Windows machine: uv, Ollama + qwen3.8, the
     repo itself, the data directories, and the Claude Desktop registration.
 
 .DESCRIPTION
@@ -26,7 +26,8 @@
     purpose (DESIGN.md section 5). Default: $env:USERPROFILE\SAPIncidentLabData
 
 .PARAMETER Model
-    Ollama model tag to pull. Default: qwen3:8b
+    Ollama model tag to pull. Default: qwen3.8. Pass another tag when the
+    machine has less memory, for example qwen3.5:9b.
 
 .PARAMETER SkipTests
     Skip the `uv run pytest` verification step after installing dependencies.
@@ -41,7 +42,7 @@ param(
     [string]$RepoUrl = 'git@github.com:bruce-hoppe_uoft/sap-incident-lab.git',
     [string]$InstallDir = (Join-Path $env:USERPROFILE 'sap-incident-lab'),
     [string]$DataDir = (Join-Path $env:USERPROFILE 'SAPIncidentLabData'),
-    [string]$Model = 'qwen3:8b',
+    [string]$Model = 'qwen3.8',
     [switch]$SkipTests
 )
 

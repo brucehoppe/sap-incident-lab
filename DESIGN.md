@@ -151,7 +151,7 @@ Data lives **outside** the repo:
 |---|---|---|
 | `ROOT` | *(required)* | absolute, exists, is a directory |
 | `OUTPUT` | *(required)* | absolute; must not be inside `ROOT` and vice versa |
-| `MODEL` | `qwen3:8b` | non-empty |
+| `MODEL` | `qwen3.5:9b` | non-empty Ollama model tag; select a host-appropriate tag |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | host must be `127.0.0.1`, `::1`, or `localhost` |
 | `NUM_CTX` | `8192` | 2048–32768 |
 | `NUM_PREDICT` | `1200` | 100–4096 |

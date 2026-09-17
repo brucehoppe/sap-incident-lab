@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     root: Path | None = None
     output: Path | None = None
 
-    model: str = Field(default="qwen3:8b", min_length=1)
+    # Ollama model tags are intentionally opaque: users can select a model
+    # appropriate to the host (for example qwen3.8 on a 32 GB Windows host or
+    # qwen3.5:9b on a 24 GB Mac) without a code change.
+    model: str = Field(default="qwen3.5:9b", min_length=1)
     ollama_url: str = "http://127.0.0.1:11434"
 
     num_ctx: int = Field(default=8192, ge=2048, le=32768)

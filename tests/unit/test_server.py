@@ -48,7 +48,7 @@ async def test_health_reports_config_valid_with_root_and_output(
 
     assert result.structured_content["config_valid"] is True
     assert result.structured_content["config_error"] is None
-    assert result.structured_content["configured_model"] == "qwen3:8b"
+    assert result.structured_content["configured_model"] == "qwen3.5:9b"
 
 
 @pytest.mark.asyncio
