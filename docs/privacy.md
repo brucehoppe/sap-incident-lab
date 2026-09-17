@@ -12,3 +12,8 @@ retention, access, and approved use before importing real incident data.
 The application preserves original bytes and hashes for traceability. It does
 not currently provide automatic redaction or guarantee that sensitive values
 are absent from model output. Treat exported SAP logs as sensitive by default.
+
+For a non-destructive preview of common email, IPv4, bearer-token, and
+secret-assignment patterns, use `sap-incident-lab redact-preview FILE`. This
+does not alter the source file or its evidence hash; it is a convenience aid,
+not a complete privacy review.

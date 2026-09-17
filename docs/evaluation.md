@@ -21,3 +21,18 @@ Report per model and prompt version:
 Do not describe synthetic smoke tests as proof of root-cause accuracy. Retain
 the benchmark JSON, model digest, prompt/schema version, source hashes, and
 application version with every evaluation run.
+
+Run the current machine's synthetic evaluator with:
+
+```sh
+uv run python scripts/evaluate-synthetic.py --model qwen3.5:9b --output outputs/evaluation.json
+```
+
+This is a regression signal for the four synthetic cases, not a substitute for
+independent real-incident validation.
+
+The first recorded Mac run is in
+`docs/evaluation-results/qwen3.5-9b-2026-09-17.json`: 2 of 4 cases met the
+simple required-term checks, all 8 extraction calls completed, and no invalid
+references were observed. The misses are retained as a limitation rather than
+silently converted into a success claim.

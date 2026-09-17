@@ -1,0 +1,40 @@
+{
+  "model": "qwen3.5:9b",
+  "cases": [
+    {
+      "incident_id": "INC-SYN-001",
+      "required_terms": ["enqueue", "lock"],
+      "found_terms": ["lock"],
+      "statuses": ["completed", "completed"],
+      "pass": false,
+      "invalid_refs": 0
+    },
+    {
+      "incident_id": "INC-SYN-002",
+      "required_terms": ["start_matnr", "unchanged"],
+      "found_terms": ["start_matnr", "unchanged"],
+      "statuses": ["completed", "completed"],
+      "pass": true,
+      "invalid_refs": 0
+    },
+    {
+      "incident_id": "INC-SYN-003",
+      "required_terms": ["it_material_buffer", "tsv_tnew_page_alloc_failed"],
+      "found_terms": ["it_material_buffer", "tsv_tnew_page_alloc_failed"],
+      "statuses": ["completed", "completed"],
+      "pass": true,
+      "invalid_refs": 0
+    },
+    {
+      "incident_id": "INC-SYN-004",
+      "required_terms": ["syn_client_cert", "expiry"],
+      "found_terms": ["syn_client_cert"],
+      "statuses": ["completed", "completed"],
+      "pass": false,
+      "invalid_refs": 0
+    }
+  ],
+  "passed": 2,
+  "total": 4,
+  "interpretation": "Synthetic regression signal only; not evidence of real-incident accuracy."
+}

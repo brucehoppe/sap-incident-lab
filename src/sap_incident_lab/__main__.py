@@ -69,6 +69,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     config_show = config_subparsers.add_parser("show")
     config_show.add_argument("--json", action="store_true")
     config_subparsers.add_parser("validate")
+    redact_parser = subparsers.add_parser("redact-preview", help="Preview common secret/identity redactions without changing the source")
+    redact_parser.add_argument("file", type=Path)
+    redact_parser.add_argument("--output", type=Path)
     setup_parser.add_argument(
         "--interactive", action="store_true", help="Prompt for data folder and model."
     )
@@ -136,6 +139,16 @@ def main(argv: Sequence[str] | None = None) -> None:
                 for selected_model in dict.fromkeys(models):
                     subprocess.run([ollama, "pull", selected_model], check=True)
             _print_result(result, False)
+            return
+        if args.command == "redact-preview":
+            from .redaction import redact_text
+
+            redaction = redact_text(args.file.read_text(encoding="utf-8"))
+            if args.output:
+                args.output.expanduser().resolve().write_text(redaction.text, encoding="utf-8")
+            else:
+                print(redaction.text, end="")
+            print(json.dumps({"counts": redaction.counts, "source_unchanged": True}, indent=2), file=sys.stderr)
             return
         settings = get_settings()
         if args.command == "config":

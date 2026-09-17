@@ -80,6 +80,7 @@ publication remains a separate decision.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development and release checks.
 - [`CHANGELOG.md`](CHANGELOG.md) — user-visible changes.
 - [`docs/evaluation.md`](docs/evaluation.md) — accuracy and benchmark protocol.
+- [`docs/release.md`](docs/release.md) — repeatable release verification.
 
 ## Setting up on Windows
 
