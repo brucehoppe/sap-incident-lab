@@ -208,3 +208,12 @@ def test_inventory_excludes_incident_symlinks_outside_root(synthetic_incident: S
     shutil.move(str(synthetic_incident.root / "INC-SYN-001"), outside)
     (synthetic_incident.root / "INC-SYN-001").symlink_to(outside, target_is_directory=True)
     assert list_incidents(synthetic_incident) == []
+
+
+def test_get_file_reads_only_the_requested_file(synthetic_incident: Settings) -> None:
+    """A sibling file that can no longer be read must not block citing a good one."""
+    assert synthetic_incident.root is not None
+    (synthetic_incident.root / "INC-SYN-001" / "workprocess-trace.txt").unlink()
+
+    record = get_file(synthetic_incident, "INC-SYN-001", "f01")
+    assert record.rel_path == "import-log.txt"
