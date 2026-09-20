@@ -29,8 +29,8 @@ class ManifestFileEntry(BaseModel):
     it does not touch the filesystem.
     """
 
-    path: str
-    encoding: str = "utf-8"
+    path: str = Field(min_length=1, max_length=255)
+    encoding: str = Field(default="utf-8", max_length=32)
     timezone: str | None = None
 
 
@@ -40,7 +40,9 @@ class IncidentManifest(BaseModel):
     classification: Literal["unclassified", "synthetic", "approved-real"] = "unclassified"
     system: SystemFacts = Field(default_factory=SystemFacts)
     time_window: TimeWindow = Field(default_factory=TimeWindow)
-    files: list[ManifestFileEntry] = Field(default_factory=list)
+    # Bounded like every other input: each file may be max_file_mb, and
+    # inventory/search read them all, so the count caps memory too.
+    files: list[ManifestFileEntry] = Field(default_factory=list, max_length=200)
 
 
 class ManifestError(Exception):

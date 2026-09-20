@@ -61,7 +61,13 @@ class Settings(BaseSettings):
     def _require_loopback(cls, value: str) -> str:
         from urllib.parse import urlparse
 
-        host = urlparse(value).hostname
+        parsed = urlparse(value)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("INCIDENT_LAB_OLLAMA_URL must be an http(s) URL")
+        if parsed.username or parsed.password:
+            # Credentials in a URL end up in config files and error messages.
+            raise ValueError("INCIDENT_LAB_OLLAMA_URL must not contain credentials")
+        host = parsed.hostname
         if host not in _LOOPBACK_HOSTS:
             raise ValueError(
                 f"INCIDENT_LAB_OLLAMA_URL host {host!r} is not loopback; "
