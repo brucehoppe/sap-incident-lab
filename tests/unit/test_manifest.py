@@ -58,3 +58,12 @@ def test_manifest_invalid_utf8_is_a_manifest_error(tmp_path: Path) -> None:
     (tmp_path / "incident.json").write_bytes(b"\xff")
     with pytest.raises(ManifestError, match="UTF-8"):
         load_manifest(tmp_path)
+
+
+def test_manifest_file_count_is_bounded(tmp_path: Path) -> None:
+    files = [{"path": f"f{i}.txt"} for i in range(201)]
+    (tmp_path / "incident.json").write_text(
+        json.dumps({"incident_id": "INC-1", "files": files}), encoding="utf-8"
+    )
+    with pytest.raises(ManifestError):
+        load_manifest(tmp_path)

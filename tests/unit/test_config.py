@@ -62,3 +62,11 @@ def test_output_must_be_a_directory(tmp_path: Path) -> None:
     output = tmp_path / "output"
     output.write_text("x")
     assert Settings(root=root, output=output).evidence_config_error() is not None
+
+
+@pytest.mark.parametrize(
+    "url", ["ftp://127.0.0.1:11434", "127.0.0.1:11434", "http://user:pw@127.0.0.1:11434"]
+)
+def test_rejects_non_http_or_credentialed_ollama_url(url: str) -> None:
+    with pytest.raises(ValueError):
+        Settings(ollama_url=url)

@@ -146,10 +146,13 @@ def load_files(settings: Settings, incident_id: str) -> tuple[IncidentManifest, 
 
 
 def get_file(settings: Settings, incident_id: str, file_id: str) -> FileRecord:
-    _manifest, records = load_files(settings, incident_id)
-    for record in records:
-        if record.file_id == file_id:
-            return record
+    # Read only the requested file: get_evidence is called repeatedly while
+    # verifying citations, and loading every file (up to max_file_mb each) to
+    # return one window makes each call cost the whole incident.
+    _incident_dir, manifest = _load_manifest_for(settings, incident_id)
+    for i, entry in enumerate(manifest.files):
+        if _file_id(i) == file_id:
+            return _read_one(settings, incident_id, entry, file_id)
     raise errors.file_not_found(incident_id, file_id)
 
 

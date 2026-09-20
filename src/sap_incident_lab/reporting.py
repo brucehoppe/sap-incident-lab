@@ -10,6 +10,26 @@ from . import errors
 from .config import Settings
 
 _INCIDENT_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+_JOB_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+# A report is caller-supplied text written to disk, so it is bounded like
+# every other input: an unbounded save is a way to fill the output volume.
+MAX_REPORT_CHARS = 200_000
+MAX_REPORT_JOB_IDS = 50
+
+
+def _check_job_ids(job_ids: list[str]) -> None:
+    """Job IDs are written into an HTML comment header, so they are checked
+    here as well as in the server: a value containing '-->' or a newline
+    would otherwise let a caller forge header lines."""
+    if len(job_ids) > MAX_REPORT_JOB_IDS:
+        raise errors.ToolError(
+            "REPORT_INVALID", f"A report may reference at most {MAX_REPORT_JOB_IDS} jobs.",
+            "Reference only the jobs the report actually relies on.",
+        )
+    for job_id in job_ids:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise errors.job_not_found(job_id)
 
 
 def save_report(
@@ -30,6 +50,12 @@ def save_report(
     assert settings.output is not None
     if not _INCIDENT_ID_RE.fullmatch(incident_id):
         raise errors.incident_not_found(incident_id)
+    _check_job_ids(job_ids)
+    if not markdown.strip() or len(markdown) > MAX_REPORT_CHARS:
+        raise errors.ToolError(
+            "REPORT_INVALID", f"A report must be 1–{MAX_REPORT_CHARS:,} characters.",
+            "Keep the report concise; cite evidence lines rather than quoting whole files.",
+        )
 
     reports_dir = settings.output / "reports" / incident_id
     if not reports_dir.resolve().is_relative_to(settings.output.resolve()):
