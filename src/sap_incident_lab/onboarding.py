@@ -81,8 +81,12 @@ def setup(
             raise ValueError(
                 "Desktop configuration is invalid; restore a valid backup before setup."
             )
-    root.mkdir(parents=True, exist_ok=True)
-    output.mkdir(parents=True, exist_ok=True)
+    # Owner-only on creation: these hold incident evidence, model output and
+    # reports, and a 0700 parent also blocks traversal to everything under it.
+    # An existing folder keeps whatever permissions its owner chose (and the
+    # mode is ignored on Windows, where the profile ACL already applies).
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    output.mkdir(mode=0o700, parents=True, exist_ok=True)
     if reason := settings.evidence_config_error():
         raise ValueError(reason)
     write_json(path, values)

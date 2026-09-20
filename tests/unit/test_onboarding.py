@@ -108,3 +108,10 @@ def test_demo_contains_only_evidence(settings: Settings) -> None:
     assert settings.root is not None
     names = {p.name for p in (settings.root / "INC-DEMO-001").iterdir()}
     assert names == {"incident.json", "import-log.txt", "workprocess-trace.txt"}
+
+
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX permission bits")
+def test_setup_creates_owner_only_data_folders(saved_config: Path, tmp_path: Path) -> None:
+    result = setup(data_dir=tmp_path / "data", register_desktop=False)
+    for folder in (result["root"], result["output"]):
+        assert Path(folder).stat().st_mode & 0o077 == 0
