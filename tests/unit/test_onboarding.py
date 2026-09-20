@@ -74,7 +74,14 @@ def test_import_copies_exact_bytes_and_leaves_unknowns(settings: Settings, tmp_p
     assert (destination / "export.txt").read_bytes() == raw
 
 
-@pytest.mark.parametrize("contents", [b"\xff", b"binary\x00file", b"x" * (1024 * 1024 + 1)])
+# Explicit ids: pytest otherwise derives the test ID from the raw bytes and
+# exports it as PYTEST_CURRENT_TEST, which Windows rejects for a NUL byte or a
+# value over 32,767 characters — and then stalls printing a megabyte-long ID.
+@pytest.mark.parametrize(
+    "contents",
+    [b"\xff", b"binary\x00file", b"x" * (1024 * 1024 + 1)],
+    ids=["invalid-utf8", "nul-byte", "over-size-limit"],
+)
 def test_bad_import_leaves_no_incident(settings: Settings, tmp_path: Path, contents: bytes) -> None:
     settings.max_file_mb = 1
     source = tmp_path / "bad.txt"
