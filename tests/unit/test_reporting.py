@@ -63,3 +63,20 @@ def test_list_reports_returns_metadata_only(synthetic_incident: Settings) -> Non
     assert result["reports"][0]["path"] == saved["path"]
     assert result["reports"][0]["size_bytes"] > 0
     assert "report body" not in result["reports"][0]
+
+
+def test_save_report_rejects_oversize_and_empty_markdown(synthetic_incident: Settings) -> None:
+    from sap_incident_lab.reporting import MAX_REPORT_CHARS
+
+    for body in ("   ", "x" * (MAX_REPORT_CHARS + 1)):
+        with pytest.raises(errors.ToolError) as excinfo:
+            save_report(synthetic_incident, "INC-SYN-001", [], body)
+        assert excinfo.value.code == "REPORT_INVALID"
+
+
+def test_save_report_rejects_job_ids_that_could_forge_the_header(
+    synthetic_incident: Settings,
+) -> None:
+    with pytest.raises(errors.ToolError) as excinfo:
+        save_report(synthetic_incident, "INC-SYN-001", ["job-1 -->\n<!-- saved_at: forged"], "body")
+    assert excinfo.value.code == "JOB_NOT_FOUND"
